@@ -1,0 +1,15 @@
+.git
+docs
+data
+tmp
+releases
+.cache
+.env
+.env.*
+node_modules
+backend/react-web/dist
+test-results
+playwright-report
+backups
+private
+exports

@@ -1,0 +1,21 @@
+{
+    auto_https disable_redirects
+    default_sni {$APP_HOST}
+    admin off
+}
+https://{$APP_HOST}:18443 {
+    tls internal
+    encode zstd gzip
+    reverse_proxy api:8080
+}
+http://:18081 {
+    handle /ca.crt {
+        header Content-Type application/x-x509-ca-cert
+        root * /data/caddy/pki/authorities/local
+        rewrite * /root.crt
+        file_server
+    }
+    handle {
+        respond "Not found" 404
+    }
+}

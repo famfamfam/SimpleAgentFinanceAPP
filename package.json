@@ -1,0 +1,24 @@
+{
+  "name": "financeapp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --config frontend/vite.config.js",
+    "build": "vite build --config frontend/vite.config.js",
+    "format": "prettier --write \"frontend/src/**/*.{js,jsx,css}\" frontend/vite.config.js",
+    "format:check": "prettier --check \"frontend/src/**/*.{js,jsx,css}\" frontend/vite.config.js",
+    "test": "node --test tests/model.test.js tests/model-currency.test.js",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@vitejs/plugin-react": "^6.2.1",
+    "prettier": "3.9.10",
+    "vite": "^8.3.5"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  }
+}

@@ -1,0 +1,13 @@
+# Host nginx terminates HTTPS; only the API has a loopback port.
+services:
+  db:
+    mem_limit: 512m
+    cpus: 1.0
+  redis:
+    mem_limit: 256m
+    cpus: 0.5
+  api:
+    environment:
+      SECURE_COOKIES: "true"
+      TRUST_PROXY: "true"
+    cpus: 1.0

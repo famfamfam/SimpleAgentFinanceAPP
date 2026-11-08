@@ -1,0 +1,11 @@
+[Unit]
+Description=Bound unused Docker build cache
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# A pass can release cache records that become collectible on the following pass.
+ExecStart=/bin/sh -ec 'for attempt in 1 2 3; do /usr/bin/docker buildx prune --all --force --reserved-space 1GB --max-used-space 5GB; done'
+Nice=19
+NoNewPrivileges=true

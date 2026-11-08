@@ -1,0 +1,65 @@
+name: checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17.8-alpine
+        env:
+          POSTGRES_USER: finance
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: finance
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U finance -d finance"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      redis:
+        image: redis:8.0.5-alpine
+        ports: ["6379:6379"]
+    env:
+      TEST_DATABASE_URL: postgres://finance:ci-only-password@localhost:5432/finance?sslmode=disable
+      TEST_REDIS_URL: redis://localhost:6379/15
+      DATABASE_URL: postgres://finance:ci-only-password@localhost:5432/finance?sslmode=disable
+      REDIS_URL: redis://localhost:6379/0
+      APP_SECRET: ci-only-secret-with-at-least-32-characters
+      REGISTRATION_PASSWORD: ci-only-registration-password
+      TEST_REGISTRATION_PASSWORD: ci-only-registration-password
+      LISTEN_ADDR: :18080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: Windows deployment script
+        shell: pwsh
+        run: ./tests/deploy.ps1
+      - name: Backup and deployment scripts
+        run: |
+          tar -cf - scripts/backup.sh scripts/update.sh scripts/publish-hestia-backup.sh scripts/cleanup.sh deploy/RESTORE.md tests/backup.sh |
+            docker run --rm -i --network none golang:1.26 sh -c 'mkdir /test && tar -xf - -C /test && sh /test/tests/backup.sh'
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: go test ./backend -run 'TestWebUI|TestVersionAndWorkerUseEmbeddedAssetDigest' -count=1
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Start server
+        run: |
+          go build -o /tmp/finance ./backend
+          /tmp/finance > /tmp/finance.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://localhost:18080/api/health; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/finance.log
+          exit 1
+      - run: npm run test:e2e
+      - run: docker build -t financeapp:ci .

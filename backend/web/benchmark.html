@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Тест скорости — Финансы</title>
+    <link rel="stylesheet" href="/benchmark.css" />
+    <script type="module" src="/benchmark.js"></script>
+  </head>
+  <body>
+    <main class="benchmark">
+      <h1>Тест на 10 000 операций</h1>
+      <p class="small spaced">
+        Использует отдельную локальную базу. Настоящие операции не меняются. Для
+        холодного старта основной PWA отдельно проверьте запуск из значка в
+        авиарежиме.
+      </p>
+      <button class="primary spaced" id="run">Запустить проверку</button>
+      <pre id="result" role="status"></pre>
+      <a href="/">Вернуться к учету</a>
+    </main>
+  </body>
+</html>

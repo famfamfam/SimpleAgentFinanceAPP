@@ -1,0 +1,50 @@
+# Local plans and private reference files
+/docs/
+/.claude/
+/.real-review/
+/private/
+/exports/
+/backups/
+/data/
+/tmp/
+/releases/
+/.cache/
+/node_modules/
+/test-results/
+/playwright-report/
+
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.keystore
+*.jks
+key.properties
+*.mobileprovision
+*.p12
+*.bundle
+*.dump
+/mobile/android/local.properties
+
+# Build output
+/backend/react-web/dist/
+/bin/
+/coverage/
+*.test
+*.out
+**/.dart_tool/
+**/.flutter-plugins-dependencies
+**/build/
+**/Pods/
+**/.symlinks/
+**/DerivedData/
+**/flutter/ephemeral/
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

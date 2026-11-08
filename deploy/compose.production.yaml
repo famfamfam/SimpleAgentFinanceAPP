@@ -1,0 +1,11 @@
+services:
+  api:
+    ports: !reset []
+    environment:
+      SECURE_COOKIES: "true"
+      TRUST_PROXY: "true"
+    networks: [private, outbound, edge]
+networks:
+  edge:
+    external: true
+    name: ${PROXY_NETWORK:-edge}

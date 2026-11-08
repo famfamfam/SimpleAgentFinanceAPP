@@ -1,0 +1,110 @@
+name: finance
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+services:
+  db:
+    logging: *logging
+    image: postgres:17.8-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finance
+      POSTGRES_USER: finance
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U finance -d finance]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [private]
+  redis:
+    logging: *logging
+    image: redis:8.0.5-alpine
+    restart: unless-stopped
+    command:
+      [
+        redis-server,
+        --appendonly,
+        "yes",
+        --maxmemory,
+        128mb,
+        --maxmemory-policy,
+        noeviction,
+      ]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [private]
+  api:
+    logging: *logging
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    image: ${APP_IMAGE:-financeapp:local}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://finance:${POSTGRES_PASSWORD}@db:5432/finance?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      APP_SECRET: ${APP_SECRET:?Set APP_SECRET in .env}
+      REGISTRATION_PASSWORD: ${REGISTRATION_PASSWORD:?Set REGISTRATION_PASSWORD in .env}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENROUTER_MODEL: ${OPENROUTER_MODEL:-qwen/qwen3.8-omni-flash}
+      AI_DAILY_BUDGET_USD: ${AI_DAILY_BUDGET_USD:-1.00}
+    ports:
+      - 127.0.0.1:${API_PORT:-18080}:8080
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [private, outbound]
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    stop_grace_period: 90s
+    healthcheck:
+      test: [CMD, /finance, healthcheck]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 10s
+  https:
+    logging: *logging
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile.caddy
+    image: financeapp-https:local
+    profiles: [https]
+    restart: unless-stopped
+    environment:
+      APP_HOST: ${APP_HOST:-localhost}
+    ports:
+      - 18443:18443
+      - 18081:18081
+    volumes:
+      - caddy:/data
+      - caddy_config:/config
+    depends_on: [api]
+    networks: [outbound]
+networks:
+  private:
+    internal: true
+  outbound:
+volumes:
+  postgres:
+  redis:
+  caddy:
+  caddy_config:
