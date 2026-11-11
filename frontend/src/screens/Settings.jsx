@@ -1,3 +1,4 @@
+import { t, getLanguage, setLanguage, translateFileError } from "/i18n.js";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as db from "/db.js";
 import * as chat from "/chat-db.js";
@@ -22,7 +23,12 @@ import {
   previewImport,
 } from "../services/files.js";
 
-function Form({ onSubmit, children, label = "Сохранить", disabled = false }) {
+function Form({
+  onSubmit,
+  children,
+  label = t("Сохранить"),
+  disabled = false,
+}) {
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   return (
@@ -44,7 +50,7 @@ function Form({ onSubmit, children, label = "Сохранить", disabled = fal
     >
       {children}
       <p className="form-error" role="alert">
-        {error}
+        {error ? translateFileError(error) : null}
       </p>
       <div className="form-actions">
         <button type="submit" className="primary" disabled={busy || disabled}>
@@ -65,7 +71,7 @@ function RecoveryKey({ value, onDone, fail }) {
       body: JSON.stringify({ key: value }),
     })
       .then(async (response) => {
-        if (!response.ok) throw Error("Не удалось создать QR");
+        if (!response.ok) throw Error(t("Не удалось создать QR"));
         return response.blob();
       })
       .then((blob) => {
@@ -83,8 +89,9 @@ function RecoveryKey({ value, onDone, fail }) {
   return (
     <>
       <p className="small">
-        Сохраните ключ или QR в надежном месте. Они открывают вашу личность на
-        другом устройстве. Восстановление требует сети.
+        {t(
+          "Сохраните ключ или QR в надежном месте. Они открывают вашу личность на другом устройстве. Восстановление требует сети.",
+        )}
       </p>
       <div className="key-box mono">{value}</div>
       {qr && (
@@ -92,7 +99,7 @@ function RecoveryKey({ value, onDone, fail }) {
           className="qr"
           id="recovery-qr"
           src={qr}
-          alt="QR с личным ключом восстановления"
+          alt={t("QR с личным ключом восстановления")}
         />
       )}
       <div className="stack">
@@ -100,7 +107,7 @@ function RecoveryKey({ value, onDone, fail }) {
           className="primary"
           onClick={() => navigator.clipboard.writeText(value).catch(fail)}
         >
-          Скопировать ключ
+          {t("Скопировать ключ")}
         </button>
         <button
           className="secondary"
@@ -111,10 +118,10 @@ function RecoveryKey({ value, onDone, fail }) {
             )
           }
         >
-          Скачать ключ
+          {t("Скачать ключ")}
         </button>
         <button className="secondary" data-action="close" onClick={onDone}>
-          Я сохранил ключ
+          {t("Я сохранил ключ")}
         </button>
       </div>
     </>
@@ -138,7 +145,7 @@ export default function Settings({ visible }) {
   const guard = async (settings) => {
     const s = await db.meta("settings");
     if (s.bookId !== settings.bookId || s.userId !== settings.userId)
-      throw Error("Книга или пользователь изменились. Откройте окно заново");
+      throw Error(t("Книга или пользователь изменились. Откройте окно заново"));
     return s;
   };
   const close = () => {
@@ -146,8 +153,15 @@ export default function Settings({ visible }) {
     setModal(null);
     m?.cancel?.();
   };
+  const modalSequence = useRef(0);
   const show = (title, content, settings = current.settings, cancel) =>
-    setModal({ title, content, settings: { ...settings }, cancel });
+    setModal({
+      id: ++modalSequence.current,
+      title,
+      content,
+      settings: { ...settings },
+      cancel,
+    });
   const run = (fn) => () => Promise.resolve().then(fn).catch(fail);
   const loadMe = async () => {
     const s = await db.meta("settings");
@@ -176,14 +190,16 @@ export default function Settings({ visible }) {
     new Promise((resolve) =>
       show(
         "Ключ восстановления",
-        <RecoveryKey
-          value={key}
-          fail={fail}
-          onDone={() => {
-            setModal(null);
-            resolve();
-          }}
-        />,
+        () => (
+          <RecoveryKey
+            value={key}
+            fail={fail}
+            onDone={() => {
+              setModal(null);
+              resolve();
+            }}
+          />
+        ),
         settings,
         resolve,
       ),
@@ -200,45 +216,48 @@ export default function Settings({ visible }) {
     return new Promise((resolve, reject) =>
       show(
         "Подключение к серверу",
-        <Form
-          label="Продолжить"
-          onSubmit={async (data) => {
-            await guard(settings);
-            const result = await api("/api/register", {
-              nickname: data.get("nickname"),
-              password: data.get("password"),
-            });
-            const me = await api("/api/me");
-            account.current = me;
-            await showKey(result.recoveryKey, settings);
-            await guard(settings);
-            resolve(me);
-          }}
-        >
-          <p className="small">
-            Для регистрации нужен пароль владельца сервера. После регистрации
-            сохраните личный ключ для входа с других устройств.
-          </p>
-          <label htmlFor="nickname">Как вас называть?</label>
-          <input
-            id="nickname"
-            name="nickname"
-            maxLength={80}
-            placeholder="Например, Саша"
-            required
-          />
-          <label htmlFor="registration-password">Пароль доступа</label>
-          <input
-            id="registration-password"
-            name="password"
-            type="password"
-            maxLength={1024}
-            autoComplete="current-password"
-            required
-          />
-        </Form>,
+        () => (
+          <Form
+            label={t("Продолжить")}
+            onSubmit={async (data) => {
+              await guard(settings);
+              const result = await api("/api/register", {
+                nickname: data.get("nickname"),
+                password: data.get("password"),
+              });
+              const me = await api("/api/me");
+              account.current = me;
+              await showKey(result.recoveryKey, settings);
+              await guard(settings);
+              resolve(me);
+            }}
+          >
+            <p className="small">
+              {t(
+                "Для регистрации нужен пароль владельца сервера. После регистрации сохраните личный ключ для входа с других устройств.",
+              )}
+            </p>
+            <label htmlFor="nickname">{t("Как вас называть?")}</label>
+            <input
+              id="nickname"
+              name="nickname"
+              maxLength={80}
+              placeholder={t("Например, Саша")}
+              required
+            />
+            <label htmlFor="registration-password">{t("Пароль доступа")}</label>
+            <input
+              id="registration-password"
+              name="password"
+              type="password"
+              maxLength={1024}
+              autoComplete="current-password"
+              required
+            />
+          </Form>
+        ),
         settings,
-        () => reject(Error("Подключение отменено")),
+        () => reject(Error(t("Подключение отменено"))),
       ),
     );
   };
@@ -248,7 +267,11 @@ export default function Settings({ visible }) {
     await guard(settings);
     await api(
       "/api/books",
-      { id: settings.bookId, name: settings.bookName },
+      {
+        id: settings.bookId,
+        name: settings.bookName,
+        language: settings.initialLanguage || "ru",
+      },
       undefined,
       me.user.id,
     );
@@ -261,77 +284,84 @@ export default function Settings({ visible }) {
     });
     await refresh();
     await sync();
-    toast("Синхронизация подключена");
+    toast(t("Синхронизация подключена"));
   };
   const recover = () => {
     const settings = { ...current.settings };
     show(
       "Восстановить вход",
-      <Form
-        label="Продолжить"
-        onSubmit={async (data) => {
-          await guard(settings);
-          await api("/api/recover", { key: data.get("key") });
-          const me = await api("/api/me");
-          account.current = me;
-          if (me.books.length) {
-            const book =
-              me.books.find((x) => x.id === settings.bookId) || me.books[0];
-            if (book.id === settings.bookId && me.user.id === settings.userId) {
-              await db.reconnect(
-                settings.bookId,
-                settings.userId,
-                me.user.nickname,
-              );
-              await sync().catch(() => {});
-            } else {
-              const snapshot = await api(
-                `/api/books/${book.id}/sync`,
-                undefined,
-                undefined,
-                me.user.id,
-              );
-              await db.switchBook(
-                {
-                  ...settings,
-                  bookId: book.id,
-                  bookName: book.name,
-                  connected: true,
-                  userId: me.user.id,
-                  nickname: me.user.nickname,
-                  revoked: false,
-                  authRequired: false,
-                },
-                snapshot,
-                settings,
-              );
-            }
-          } else {
+      () => (
+        <Form
+          label={t("Продолжить")}
+          onSubmit={async (data) => {
             await guard(settings);
-            await db.setMeta("settings", {
-              ...settings,
-              connected: false,
-              userId: me.user.id,
-              nickname: me.user.nickname,
-              authRequired: false,
-            });
-          }
-          setModal(null);
-          await refresh();
-          await loadMe();
-          toast("Вход восстановлен");
-        }}
-      >
-        <p className="small">Вставьте личный ключ или содержимое QR.</p>
-        <label htmlFor="recovery-key">Ключ восстановления</label>
-        <textarea
-          id="recovery-key"
-          name="key"
-          required
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </Form>,
+            await api("/api/recover", { key: data.get("key") });
+            const me = await api("/api/me");
+            account.current = me;
+            if (me.books.length) {
+              const book =
+                me.books.find((x) => x.id === settings.bookId) || me.books[0];
+              if (
+                book.id === settings.bookId &&
+                me.user.id === settings.userId
+              ) {
+                await db.reconnect(
+                  settings.bookId,
+                  settings.userId,
+                  me.user.nickname,
+                );
+                await sync().catch(() => {});
+              } else {
+                const snapshot = await api(
+                  `/api/books/${book.id}/sync`,
+                  undefined,
+                  undefined,
+                  me.user.id,
+                );
+                await db.switchBook(
+                  {
+                    ...settings,
+                    bookId: book.id,
+                    bookName: book.name,
+                    connected: true,
+                    userId: me.user.id,
+                    nickname: me.user.nickname,
+                    revoked: false,
+                    authRequired: false,
+                  },
+                  snapshot,
+                  settings,
+                );
+              }
+            } else {
+              await guard(settings);
+              await db.setMeta("settings", {
+                ...settings,
+                connected: false,
+                userId: me.user.id,
+                nickname: me.user.nickname,
+                authRequired: false,
+              });
+            }
+            setModal(null);
+            await refresh();
+            await loadMe();
+            toast(t("Вход восстановлен"));
+          }}
+        >
+          <p className="small">
+            {t("Вставьте личный ключ или содержимое QR.")}
+          </p>
+          <label htmlFor="recovery-key">{t("Ключ восстановления")}</label>
+          <textarea
+            id="recovery-key"
+            name="key"
+            required
+            autoComplete="off"
+            spellCheck={false}
+          />
+        </Form>
+      ),
       settings,
     );
   };
@@ -341,61 +371,67 @@ export default function Settings({ visible }) {
     await guard(settings);
     show(
       "Присоединиться к книге",
-      <Form
-        label="Продолжить"
-        onSubmit={async (data) => {
-          await guard(settings);
-          if (
-            !confirm(
-              "Переключиться на общую книгу? Текущие локальные данные сохранятся в архиве резервной копии.",
+      () => (
+        <Form
+          label={t("Продолжить")}
+          onSubmit={async (data) => {
+            await guard(settings);
+            if (
+              !confirm(
+                t(
+                  "Переключиться на общую книгу? Текущие локальные данные сохранятся в архиве резервной копии.",
+                ),
+              )
             )
-          )
-            return;
-          const result = await api(
-              "/api/join",
-              { code: data.get("code") },
-              undefined,
-              me.user.id,
-            ),
-            snapshot = await api(
-              `/api/books/${result.bookId}/sync`,
-              undefined,
-              undefined,
-              me.user.id,
+              return;
+            const result = await api(
+                "/api/join",
+                { code: data.get("code") },
+                undefined,
+                me.user.id,
+              ),
+              snapshot = await api(
+                `/api/books/${result.bookId}/sync`,
+                undefined,
+                undefined,
+                me.user.id,
+              );
+            await db.switchBook(
+              {
+                ...settings,
+                bookId: result.bookId,
+                bookName: "Общая книга",
+                connected: true,
+                userId: me.user.id,
+                nickname: me.user.nickname,
+                revoked: false,
+                authRequired: false,
+              },
+              snapshot,
+              settings,
             );
-          await db.switchBook(
-            {
-              ...settings,
-              bookId: result.bookId,
-              bookName: "Общая книга",
-              connected: true,
-              userId: me.user.id,
-              nickname: me.user.nickname,
-              revoked: false,
-              authRequired: false,
-            },
-            snapshot,
-            settings,
-          );
-          setModal(null);
-          await refresh();
-          await loadMe();
-        }}
-      >
-        <p className="small">
-          Текущая книга будет сохранена в локальном архиве резервной копии.
-        </p>
-        <label htmlFor="join-code">Одноразовый код</label>
-        <input
-          id="join-code"
-          name="code"
-          maxLength={8}
-          minLength={8}
-          autoCapitalize="characters"
-          autoComplete="off"
-          required
-        />
-      </Form>,
+            setModal(null);
+            await refresh();
+            await loadMe();
+          }}
+        >
+          <p className="small">
+            {t(
+              "Текущая книга будет сохранена в локальном архиве резервной копии.",
+            )}
+          </p>
+          <label htmlFor="join-code">{t("Одноразовый код")}</label>
+          <input
+            id="join-code"
+            name="code"
+            maxLength={8}
+            minLength={8}
+            autoCapitalize="characters"
+            autoComplete="off"
+            required
+          />
+        </Form>
+      ),
       settings,
     );
   };
@@ -412,64 +448,74 @@ export default function Settings({ visible }) {
     const owner = items.find((x) => x.owner)?.id;
     show(
       "Участники",
-      <>
-        <p className="small">{settings.bookName}</p>
-        {items.map((x) => (
-          <div className="setting-row" key={x.id}>
-            <span className="grow">{x.nickname}</span>
-            <span className="badge">{x.owner ? "Владелец" : "Участник"}</span>
-            {me.user.id === owner && !x.owner && (
-              <button
-                className="icon-button"
-                aria-label="Удалить участника"
-                onClick={run(async () => {
-                  await guard(settings);
-                  if (confirm("Удалить участника из общей книги?")) {
-                    await api(
-                      `/api/books/${settings.bookId}/members/${x.id}`,
-                      null,
-                      "DELETE",
-                      settings.userId,
-                    );
-                    await members();
-                  }
-                })}
-              >
-                <Icon name="close" />
-              </button>
-            )}
-          </div>
-        ))}
-        {me.user.id === owner && (
-          <button
-            className="primary full spaced"
-            onClick={run(async () => {
-              await guard(settings);
-              const invite = await api(
-                `/api/books/${settings.bookId}/invite`,
-                {},
-                undefined,
-                settings.userId,
-              );
-              show(
-                "Приглашение",
-                <>
-                  <p className="small">
-                    Код действует 15 минут и подключает одного участника.
-                  </p>
-                  <p className="key-box mono">{invite.code}</p>
-                  <p className="small">
-                    На втором устройстве: Настройки → Присоединиться по коду.
-                  </p>
-                </>,
-                settings,
-              );
-            })}
-          >
-            Пригласить участника
-          </button>
-        )}
-      </>,
+      () => (
+        <>
+          <p className="small">{settings.bookName}</p>
+          {items.map((x) => (
+            <div className="setting-row" key={x.id}>
+              <span className="grow">{x.nickname}</span>
+              <span className="badge">
+                {x.owner ? t("Владелец") : t("Участник")}
+              </span>
+              {me.user.id === owner && !x.owner && (
+                <button
+                  className="icon-button"
+                  aria-label={t("Удалить участника")}
+                  onClick={run(async () => {
+                    await guard(settings);
+                    if (confirm(t("Удалить участника из общей книги?"))) {
+                      await api(
+                        `/api/books/${settings.bookId}/members/${x.id}`,
+                        null,
+                        "DELETE",
+                        settings.userId,
+                      );
+                      await members();
+                    }
+                  })}
+                >
+                  <Icon name="close" />
+                </button>
+              )}
+            </div>
+          ))}
+          {me.user.id === owner && (
+            <button
+              className="primary full spaced"
+              onClick={run(async () => {
+                await guard(settings);
+                const invite = await api(
+                  `/api/books/${settings.bookId}/invite`,
+                  {},
+                  undefined,
+                  settings.userId,
+                );
+                show(
+                  "Приглашение",
+                  () => (
+                    <>
+                      <p className="small">
+                        {t(
+                          "Код действует 15 минут и подключает одного участника.",
+                        )}
+                      </p>
+                      <p className="key-box mono">{invite.code}</p>
+                      <p className="small">
+                        {t(
+                          "На втором устройстве: Настройки → Присоединиться по коду.",
+                        )}
+                      </p>
+                    </>
+                  ),
+                  settings,
+                );
+              })}
+            >
+              {t("Пригласить участника")}
+            </button>
+          )}
+        </>
+      ),
       settings,
     );
   };
@@ -484,62 +530,67 @@ export default function Settings({ visible }) {
     await guard(settings);
     show(
       "MCP-подключения",
-      <>
-        <p className="small">
-          Личный токен внешнего агента. Храните его как пароль.
-        </p>
-        {list.map((x) => (
-          <div className="setting-row" key={x.id}>
-            <span className="grow">{x.name}</span>
-            <button
-              className="text-button"
-              onClick={run(async () => {
-                await guard(settings);
-                await api(
-                  `/api/books/${settings.bookId}/integrations/${x.id}`,
-                  null,
-                  "DELETE",
-                  settings.userId,
-                );
-                await integrations();
-              })}
-            >
-              Отозвать
-            </button>
-          </div>
-        ))}
-        <Form
-          label="Создать токен"
-          onSubmit={async (data) => {
-            await guard(settings);
-            const result = await api(
-              `/api/books/${settings.bookId}/integrations`,
-              { name: data.get("name"), write: data.get("write") === "on" },
-              undefined,
-              settings.userId,
-            );
-            await guard(settings);
-            show(
-              "Токен MCP",
-              <>
-                <p className="small">
-                  Показывается один раз. Передавайте как заголовок
-                  Authorization: Bearer TOKEN.
-                </p>
-                <p className="key-box mono">{result.token}</p>
-              </>,
-              settings,
-            );
-          }}
-        >
-          <label htmlFor="integration-name">Название</label>
-          <input id="integration-name" name="name" maxLength={80} required />
-          <label className="check">
-            <input name="write" type="checkbox" />
-            Разрешить изменение записей
-          </label>
-        </Form>
-      </>,
+      () => (
+        <>
+          <p className="small">
+            {t("Личный токен внешнего агента. Храните его как пароль.")}
+          </p>
+          {list.map((x) => (
+            <div className="setting-row" key={x.id}>
+              <span className="grow">{x.name}</span>
+              <button
+                className="text-button"
+                onClick={run(async () => {
+                  await guard(settings);
+                  await api(
+                    `/api/books/${settings.bookId}/integrations/${x.id}`,
+                    null,
+                    "DELETE",
+                    settings.userId,
+                  );
+                  await integrations();
+                })}
+              >
+                {t("Отозвать")}
+              </button>
+            </div>
+          ))}
+          <Form
+            label={t("Создать токен")}
+            onSubmit={async (data) => {
+              await guard(settings);
+              const result = await api(
+                `/api/books/${settings.bookId}/integrations`,
+                { name: data.get("name"), write: data.get("write") === "on" },
+                undefined,
+                settings.userId,
+              );
+              await guard(settings);
+              show(
+                "Токен MCP",
+                () => (
+                  <>
+                    <p className="small">
+                      {t(
+                        "Показывается один раз. Передавайте как заголовок Authorization: Bearer TOKEN.",
+                      )}
+                    </p>
+                    <p className="key-box mono">{result.token}</p>
+                  </>
+                ),
+                settings,
+              );
+            }}
+          >
+            <label htmlFor="integration-name">{t("Название")}</label>
+            <input id="integration-name" name="name" maxLength={80} required />
+            <label className="check">
+              <input name="write" type="checkbox" />
+              {t("Разрешить изменение записей")}
+            </label>
+          </Form>
+        </>
+      ),
       settings,
     );
   };
@@ -549,35 +600,39 @@ export default function Settings({ visible }) {
     await guard(settings);
     show(
       "Устройства",
-      <>
-        {items.map((s) => (
-          <div className="setting-row" key={s.id}>
-            <span className="grow">
-              {s.current ? "Это устройство" : "Другая сессия"}
-              <p className="small">
-                {new Date(s.createdAt).toLocaleDateString("ru-RU")}
-              </p>
-            </span>
-            {!s.current && (
-              <button
-                className="text-button"
-                onClick={run(async () => {
-                  await guard(settings);
-                  await api(
-                    "/api/sessions/" + s.id,
-                    null,
-                    "DELETE",
-                    settings.userId,
-                  );
-                  await sessions();
-                })}
-              >
-                Отозвать
-              </button>
-            )}
-          </div>
-        ))}
-      </>,
+      () => (
+        <>
+          {items.map((s) => (
+            <div className="setting-row" key={s.id}>
+              <span className="grow">
+                {s.current ? t("Это устройство") : t("Другая сессия")}
+                <p className="small">
+                  {new Date(s.createdAt).toLocaleDateString(
+                    getLanguage() === "en" ? "en-GB" : "ru-RU",
+                  )}
+                </p>
+              </span>
+              {!s.current && (
+                <button
+                  className="text-button"
+                  onClick={run(async () => {
+                    await guard(settings);
+                    await api(
+                      "/api/sessions/" + s.id,
+                      null,
+                      "DELETE",
+                      settings.userId,
+                    );
+                    await sessions();
+                  })}
+                >
+                  {t("Отозвать")}
+                </button>
+              )}
+            </div>
+          ))}
+        </>
+      ),
       settings,
     );
   };
@@ -586,50 +641,54 @@ export default function Settings({ visible }) {
       problems = current.pending.filter((x) => x.status !== "pending");
     show(
       "Изменения требуют внимания",
-      problems.length ? (
-        <>
-          {problems.map((c) => (
-            <section className="spaced" key={c.id}>
-              <h3>
-                {c.data.note ||
-                  c.data.name ||
-                  "Операция " + (c.data.amount || "")}
-              </h3>
-              <p className="small spaced">
-                {c.error ||
-                  "Запись изменена другим участником. Ваша версия сохранена на устройстве."}
-              </p>
-              <div className="row spaced">
-                {[
-                  [true, "Отправить мою версию"],
-                  [false, "Принять серверную"],
-                ].map(([local, label]) => (
-                  <button
-                    key={label}
-                    className={local ? "primary" : "secondary"}
-                    onClick={run(async () => {
-                      await guard(settings);
-                      await db.resolveConflict(
-                        c.entity,
-                        c.data.id,
-                        local,
-                        settings,
-                      );
-                      setModal(null);
-                      await refresh();
-                      sync().catch(fail);
-                    })}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
-        </>
-      ) : (
-        <p>Конфликтов нет</p>
-      ),
+      () =>
+        problems.length ? (
+          <>
+            {problems.map((c) => (
+              <section className="spaced" key={c.id}>
+                <h3>
+                  {c.data.note ||
+                    c.data.name ||
+                    t("Операция {amount}", { amount: c.data.amount || "" })}
+                </h3>
+                <p className="small spaced">
+                  {c.error
+                    ? t(c.error)
+                    : t(
+                        "Запись изменена другим участником. Ваша версия сохранена на устройстве.",
+                      )}
+                </p>
+                <div className="row spaced">
+                  {[
+                    [true, "Отправить мою версию"],
+                    [false, "Принять серверную"],
+                  ].map(([local, label]) => (
+                    <button
+                      key={label}
+                      className={local ? "primary" : "secondary"}
+                      onClick={run(async () => {
+                        await guard(settings);
+                        await db.resolveConflict(
+                          c.entity,
+                          c.data.id,
+                          local,
+                          settings,
+                        );
+                        setModal(null);
+                        await refresh();
+                        sync().catch(fail);
+                      })}
+                    >
+                      {t(label)}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </>
+        ) : (
+          <p>{t("Конфликтов нет")}</p>
+        ),
       settings,
     );
   };
@@ -652,15 +711,15 @@ export default function Settings({ visible }) {
     location.hash = "entries";
   };
   const importFile = async (file) => {
-    if (importBusy.current) throw Error("Другой файл еще обрабатывается");
+    if (importBusy.current) throw Error(t("Другой файл еще обрабатывается"));
     importBusy.current = true;
     try {
       if (current.settings.connected) await sync({ wait: true });
-      toast("Читаем XLSX…");
+      toast(t("Читаем XLSX…"));
       const preview = await previewImport(file);
       if (preview.already) {
         await showImported(preview);
-        toast("Этот файл уже импортирован");
+        toast(t("Этот файл уже импортирован"));
         return;
       }
       const { proposal, catalogs } = preview;
@@ -670,60 +729,64 @@ export default function Settings({ visible }) {
             " → " +
             catalogs.accounts.find((x) => x.id === e.toAccountId)?.name
           : catalogs.categories.find((x) => x.id === e.categoryId)?.name ||
-            "Категория";
+            t("Категория");
       show(
         "Проверка импорта",
-        <Form
-          label="Импортировать"
-          disabled={!!proposal.errors.length}
-          onSubmit={async (data) => {
-            const result = await applyImport(
-              preview,
-              data.getAll("duplicates"),
-            );
-            setModal(null);
-            await showImported(preview);
-            sync().catch(fail);
-            toast(
-              result.alreadyApplied
-                ? "Файл уже импортирован"
-                : `Добавлено: ${result.imported}`,
-            );
-          }}
-        >
-          <p>
-            Операций: {proposal.entries.length} · возможных дублей:{" "}
-            {proposal.duplicates.length}
-          </p>
-          {proposal.errors.map((e, i) => (
-            <p className="form-error" key={i}>
-              {e}
+        () => (
+          <Form
+            label={t("Импортировать")}
+            disabled={!!proposal.errors.length}
+            onSubmit={async (data) => {
+              const result = await applyImport(
+                preview,
+                data.getAll("duplicates"),
+              );
+              setModal(null);
+              await showImported(preview);
+              sync().catch(fail);
+              toast(
+                result.alreadyApplied
+                  ? t("Файл уже импортирован")
+                  : t("Добавлено: {count}", { count: result.imported }),
+              );
+            }}
+          >
+            <p>
+              {t("Операций: {count} · возможных дублей: {duplicates}", {
+                count: proposal.entries.length,
+                duplicates: proposal.duplicates.length,
+              })}
             </p>
-          ))}
-          <div className="import-preview">
-            {proposal.entries.map((e) => (
-              <div className="import-row" key={e.id}>
-                <span>
-                  {e.date} · {label(e)} · {e.note}
-                </span>
-                <strong>
-                  {formatMoney(cents(e.amount), currencyCode(e.currency))}
-                  {e.kind === "transfer" &&
-                  e.toCurrency &&
-                  currencyCode(e.currency) !== currencyCode(e.toCurrency)
-                    ? ` → ${formatMoney(cents(e.toAmount), currencyCode(e.toCurrency))}`
-                    : ""}
-                </strong>
-                {proposal.duplicates.includes(e.id) && (
-                  <label className="check">
-                    <input type="checkbox" name="duplicates" value={e.id} />
-                    Возможный повтор — добавить строку ещё раз
-                  </label>
-                )}
-              </div>
+            {proposal.errors.map((e, i) => (
+              <p className="form-error" key={i}>
+                {translateFileError(e)}
+              </p>
             ))}
-          </div>
-        </Form>,
+            <div className="import-preview">
+              {proposal.entries.map((e) => (
+                <div className="import-row" key={e.id}>
+                  <span>
+                    {e.date} · {label(e)} · {e.note}
+                  </span>
+                  <strong>
+                    {formatMoney(cents(e.amount), currencyCode(e.currency))}
+                    {e.kind === "transfer" &&
+                    e.toCurrency &&
+                    currencyCode(e.currency) !== currencyCode(e.toCurrency)
+                      ? ` → ${formatMoney(cents(e.toAmount), currencyCode(e.toCurrency))}`
+                      : ""}
+                  </strong>
+                  {proposal.duplicates.includes(e.id) && (
+                    <label className="check">
+                      <input type="checkbox" name="duplicates" value={e.id} />
+                      {t("Возможный повтор — добавить строку ещё раз")}
+                    </label>
+                  )}
+                </div>
+              ))}
+            </div>
+          </Form>
+        ),
         preview.local.settings,
       );
     } finally {
@@ -734,14 +797,13 @@ export default function Settings({ visible }) {
     const items = (await db.backup()).meta.filter((x) =>
       x.id.startsWith("archive:"),
     );
-    show(
-      "Локальные архивы",
+    show("Локальные архивы", () =>
       items.length ? (
         <>
           {items.map((x) => (
             <div className="setting-row" key={x.id}>
               <span className="grow">
-                {x.value.settings?.bookName || "Книга"}
+                {x.value.settings?.bookName || t("Книга")}
               </span>
               <button
                 className="text-button"
@@ -761,14 +823,14 @@ export default function Settings({ visible }) {
                   );
                 })}
               >
-                Скачать копию
+                {t("Скачать копию")}
               </button>
             </div>
           ))}
         </>
       ) : (
         <p className="small">
-          Архивов пока нет. Они создаются при переключении книги.
+          {t("Архивов пока нет. Они создаются при переключении книги.")}
         </p>
       ),
     );
@@ -776,37 +838,47 @@ export default function Settings({ visible }) {
   const diagnostics = async () => {
     const estimate = await navigator.storage?.estimate?.(),
       persistent = await navigator.storage?.persisted?.(),
+      permission =
+        persistent === false ? await db.meta("storage-permission") : null,
       media = await chat.mediaStats(),
       size = (n) =>
         n == null
-          ? "нет оценки"
-          : `${(n / 1024 / 1024).toLocaleString("ru-RU", { maximumFractionDigits: 1 })} MiB`;
-    show(
-      "Диагностика",
+          ? t("нет оценки")
+          : `${(n / 1024 / 1024).toLocaleString(getLanguage() === "en" ? "en-GB" : "ru-RU", { maximumFractionDigits: 1 })} MiB`;
+    show("Диагностика", () => (
       <>
-        <p>Версия {APP_VERSION} · React</p>
-        <p>Первое открытие: {Math.round(window.__financeReady?.ms || 0)} мс</p>
+        <p>{t("Версия {version} · React", { version: APP_VERSION })}</p>
         <p>
-          Операций: {current.state.entries.length} · в очереди:{" "}
-          {current.pending.length}
+          {t("Первое открытие: {ms} мс", {
+            ms: Math.round(window.__financeReady?.ms || 0),
+          })}
         </p>
         <p>
-          Хранилище: {size(estimate?.usage)} / {size(estimate?.quota)}
+          {t("Операций: {count} · в очереди: {pending}", {
+            count: current.state.entries.length,
+            pending: current.pending.length,
+          })}
         </p>
         <p>
-          Постоянное хранение:{" "}
+          {t("Хранилище: {usage} / {quota}", {
+            usage: size(estimate?.usage),
+            quota: size(estimate?.quota),
+          })}
+        </p>
+        <p>
+          {t("Постоянное хранение:")}{" "}
           {persistent === undefined
-            ? "API не поддерживается"
+            ? t("API не поддерживается")
             : persistent
-              ? "предоставлено"
-              : (await db.meta("storage-permission")) === "denied"
-                ? "браузер отказал в запросе"
-                : "пока не предоставлено"}
+              ? t("предоставлено")
+              : permission === "denied"
+                ? t("браузер отказал в запросе")
+                : t("пока не предоставлено")}
         </p>
-        <p>Аудио: {size(media)}</p>
-        <a href="/benchmark.html">Отдельный тест на 10 000 операций</a>
-      </>,
-    );
+        <p>{t("Аудио: {size}", { size: size(media) })}</p>
+        <a href="/benchmark.html">{t("Отдельный тест на 10 000 операций")}</a>
+      </>
+    ));
   };
   const actions = useRef();
   actions.current = { recover, conflicts };
@@ -831,7 +903,7 @@ export default function Settings({ visible }) {
         .then((r) =>
           setOffline(
             r?.active
-              ? `Готово без сети · версия ${APP_VERSION}`
+              ? "Готово без сети · версия {version}"
               : "Первичная загрузка: оставьте приложение открытым с сетью.",
           ),
         )
@@ -850,11 +922,11 @@ export default function Settings({ visible }) {
       {visible && (
         <>
           <div className="heading">
-            <h1>Настройки</h1>
+            <h1>{t("Настройки")}</h1>
           </div>
           <div className="settings-grid">
             <section className="panel">
-              <h3>Учет</h3>
+              <h3>{t("Учет")}</h3>
               {[
                 [
                   "category",
@@ -876,47 +948,49 @@ export default function Settings({ visible }) {
                     <>
                       <Icon name={icon} />
                       <span className="grow">
-                        <strong>{label}</strong>
+                        <strong>{t(label)}</strong>
                         <span className="small">
                           {items.filter((x) => !x.deleted).length} ·{" "}
                           {entity === "account"
-                            ? "наличные и карты"
-                            : "расходы и доходы"}
+                            ? t("наличные и карты")
+                            : t("расходы и доходы")}
                         </span>
                       </span>
                       <Icon name="right" />
                     </>,
                     () => setCatalog(entity),
                     "settings-link",
-                    { "aria-label": label },
+                    { "aria-label": t(label) },
                   )}
                   {button(
                     <Icon name="plus" />,
                     () => setCatalogForm(entity),
                     "icon-button",
-                    { "aria-label": add },
+                    { "aria-label": t(add) },
                   )}
                 </div>
               ))}
             </section>
             <section className="panel">
-              <h3>Данные</h3>
+              <h3>{t("Данные")}</h3>
               <div className="stack spaced">
-                {button("Импортировать XLSX", () => {
+                {button(t("Импортировать XLSX"), () => {
                   if (!navigator.onLine)
                     throw Error(
-                      "Для разбора XLSX нужен сервер. Повторите после подключения к сети.",
+                      t(
+                        "Для разбора XLSX нужен сервер. Повторите после подключения к сети.",
+                      ),
                     );
                   chooseFile(".xlsx", importFile, fail);
                 })}
-                {button("Выгрузить XLSX", () => exportRef.current())}
-                {button("Скачать локальную резервную копию", async () =>
+                {button(t("Выгрузить XLSX"), () => exportRef.current())}
+                {button(t("Скачать локальную резервную копию"), async () =>
                   download(
                     db.backupFile(await db.backup()),
                     "finance-backup-" + today() + ".json",
                   ),
                 )}
-                {button("Восстановить локальную копию", () => {
+                {button(t("Восстановить локальную копию"), () => {
                   const settings = { ...current.settings };
                   chooseFile(
                     ".json",
@@ -924,102 +998,124 @@ export default function Settings({ visible }) {
                       await guard(settings);
                       if (
                         confirm(
-                          "Заменить локальные данные резервной копией? Сначала скачайте текущую копию.",
+                          t(
+                            "Заменить локальные данные резервной копией? Сначала скачайте текущую копию.",
+                          ),
                         )
                       ) {
                         await db.restore(await db.readBackup(file), settings);
                         await refresh();
-                        toast("Локальная копия восстановлена");
+                        toast(t("Локальная копия восстановлена"));
                       }
                     },
                     fail,
                   );
                 })}
-                {button("Локальные архивы книг", archives)}
+                {button(t("Локальные архивы книг"), archives)}
               </div>
               <p className="small spaced">
-                Для XLSX нужна сеть. Резервная копия JSON доступна без
-                интернета.
+                {t(
+                  "Для XLSX нужна сеть. Резервная копия JSON доступна без интернета.",
+                )}
               </p>
             </section>
             <section className="panel">
               <div className="panel-head">
                 <h3>
-                  <Icon name="cloud" /> Синхронизация
+                  <Icon name="cloud" /> {t("Синхронизация")}
                 </h3>
                 <span className="badge">
-                  {connected ? "Подключена" : "Локальный учет"}
+                  {connected ? t("Подключена") : t("Локальный учет")}
                 </span>
               </div>
               <p className="small">
                 {connected
-                  ? (current.settings.bookName || "Общая книга") +
-                    ". Изменения отправляются при работе приложения с сетью."
-                  : "Подключите общую книгу для совместного учета и помощника. Ручной учет работает и без подключения."}
+                  ? t(
+                      "{book}. Изменения отправляются при работе приложения с сетью.",
+                      { book: current.settings.bookName || t("Общая книга") },
+                    )
+                  : t(
+                      "Подключите общую книгу для совместного учета и помощника. Ручной учет работает и без подключения.",
+                    )}
               </p>
               <div className="stack spaced">
                 {connected ? (
                   <>
-                    {button("Участники и приглашение", members)}
-                    {button("Изменить имя", () => {
+                    {button(t("Участники и приглашение"), members)}
+                    {button(t("Изменить имя"), () => {
                       const settings = { ...current.settings };
                       show(
                         "Ваше имя",
-                        <Form
-                          onSubmit={async (data) => {
-                            await guard(settings);
-                            await api(
-                              "/api/me",
-                              { nickname: data.get("nickname") },
-                              "PATCH",
-                              settings.userId,
-                            );
-                            setModal(null);
-                            await loadMe();
-                          }}
-                        >
-                          <label htmlFor="member-nickname">Имя участника</label>
-                          <input
-                            id="member-nickname"
-                            name="nickname"
-                            defaultValue={settings.nickname}
-                            maxLength={80}
-                            required
-                          />
-                        </Form>,
+                        () => (
+                          <Form
+                            onSubmit={async (data) => {
+                              await guard(settings);
+                              await api(
+                                "/api/me",
+                                { nickname: data.get("nickname") },
+                                "PATCH",
+                                settings.userId,
+                              );
+                              setModal(null);
+                              await loadMe();
+                            }}
+                          >
+                            <label htmlFor="member-nickname">
+                              {t("Имя участника")}
+                            </label>
+                            <input
+                              id="member-nickname"
+                              name="nickname"
+                              defaultValue={settings.nickname}
+                              maxLength={80}
+                              required
+                            />
+                          </Form>
+                        ),
                         settings,
                       );
                     })}
                   </>
                 ) : (
-                  button("Подключить синхронизацию", connect, "primary")
+                  button(t("Подключить синхронизацию"), connect, "primary")
                 )}
-                {button("Присоединиться по коду", join)}
-                {button("Войти по личному ключу", recover, "text-button")}
+                {button(t("Присоединиться по коду"), join)}
+                {button(t("Войти по личному ключу"), recover, "text-button")}
               </div>
             </section>
             <section className="panel">
               <div className="panel-head">
-                <h3>Приложение</h3>
+                <h3>{t("Приложение")}</h3>
                 <span className="badge">{APP_VERSION}</span>
               </div>
+              <label htmlFor="language">{t("Язык")}</label>
+              <select
+                id="language"
+                value={getLanguage()}
+                onChange={(event) => setLanguage(event.target.value)}
+              >
+                <option value="ru">Русский</option>
+                <option value="en">English</option>
+              </select>
               <div className="stack spaced">
-                {button("Проверить обновления", () =>
+                {button(t("Проверить обновления"), () =>
                   window.dispatchEvent(
                     new CustomEvent("finance-check-update", { detail: true }),
                   ),
                 )}
               </div>
               <p className="small spaced" id="offline-ready">
-                {offline}
+                {t(offline, { version: APP_VERSION })}
               </p>
               <details className="settings-details">
-                <summary>Диагностика и хранение</summary>
+                <summary>{t("Диагностика и хранение")}</summary>
                 <div className="stack spaced">
-                  {button("Проверить постоянное хранение", async () => {
+                  {button(t("Проверить постоянное хранение"), async () => {
                     if (!navigator.storage?.persist) {
                       toast(
-                        "Этот браузер не поддерживает запрос постоянного хранения. Пользуйтесь синхронизацией и резервными копиями",
+                        t(
+                          "Этот браузер не поддерживает запрос постоянного хранения. Пользуйтесь синхронизацией и резервными копиями",
+                        ),
                       );
                       return;
                     }
@@ -1030,35 +1126,40 @@ export default function Settings({ visible }) {
                     );
                     toast(
                       granted
-                        ? "Постоянное хранение разрешено"
-                        : "Браузер отказал в постоянном хранении. Он может принять решение без системного запроса. Синхронизируйте записи.",
+                        ? t("Постоянное хранение разрешено")
+                        : t(
+                            "Браузер отказал в постоянном хранении. Он может принять решение без системного запроса. Синхронизируйте записи.",
+                          ),
                     );
                   })}
-                  {button("Скорость и диагностика", diagnostics)}
+                  {button(t("Скорость и диагностика"), diagnostics)}
                 </div>
               </details>
               <details className="settings-details">
-                <summary>Как установить приложение</summary>
+                <summary>{t("Как установить приложение")}</summary>
                 <p className="small spaced">
-                  iPhone: Safari → Поделиться → На экран «Домой».
+                  {t("iPhone: Safari → Поделиться → На экран «Домой».")}
                   <br />
-                  Android: меню Chrome → Установить приложение.
+                  {t("Android: меню Chrome → Установить приложение.")}
                   <br />
-                  Дождитесь отметки «Готово без сети», затем приложение можно
-                  открывать в авиарежиме.
+                  {t(
+                    "Дождитесь отметки «Готово без сети», затем приложение можно открывать в авиарежиме.",
+                  )}
                 </p>
               </details>
             </section>
             {connected && (
               <section className="panel">
-                <h3>Доступ и интеграции</h3>
+                <h3>{t("Доступ и интеграции")}</h3>
                 <div className="stack spaced">
-                  {button("Устройства", sessions)}
-                  {button("Новый ключ восстановления", async () => {
+                  {button(t("Устройства"), sessions)}
+                  {button(t("Новый ключ восстановления"), async () => {
                     const settings = { ...current.settings };
                     if (
                       confirm(
-                        "Создать новый ключ? Старый ключ и QR перестанут работать.",
+                        t(
+                          "Создать новый ключ? Старый ключ и QR перестанут работать.",
+                        ),
                       )
                     ) {
                       await guard(settings);
@@ -1072,15 +1173,17 @@ export default function Settings({ visible }) {
                       await showKey(result.recoveryKey, settings);
                     }
                   })}
-                  {button("MCP и внешние агенты", integrations)}
+                  {button(t("MCP и внешние агенты"), integrations)}
                 </div>
                 <div className="settings-signout">
                   {button(
-                    "Выйти на этом устройстве",
+                    t("Выйти на этом устройстве"),
                     async () => {
                       if (
                         !confirm(
-                          "Выйти и очистить текущую локальную книгу? Копия будет сохранена в локальном архиве. Сохраните личный ключ для возврата.",
+                          t(
+                            "Выйти и очистить текущую локальную книгу? Копия будет сохранена в локальном архиве. Сохраните личный ключ для возврата.",
+                          ),
                         )
                       )
                         return;
@@ -1091,9 +1194,10 @@ export default function Settings({ visible }) {
                       await db.switchBook(
                         {
                           bookId: crypto.randomUUID(),
-                          bookName: "Личный учет",
+                          bookName: t("Личный учет"),
+                          initialLanguage: getLanguage(),
                           connected: false,
-                          nickname: "Я",
+                          nickname: t("Я"),
                           revision: 0,
                         },
                         { state: initialState(), revision: 0 },
@@ -1122,8 +1226,8 @@ export default function Settings({ visible }) {
         />
       )}
       {modal && (
-        <Dialog key={modal.title} title={modal.title} onClose={close}>
-          {modal.content}
+        <Dialog key={modal.id} title={t(modal.title)} onClose={close}>
+          {modal.content()}
         </Dialog>
       )}
     </>

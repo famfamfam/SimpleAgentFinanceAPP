@@ -5,14 +5,26 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
 import * as db from "/db.js";
 import { periodEntries, periodRange } from "/model.js";
+import {
+  getLanguage,
+  subscribeLanguage,
+  t,
+  translateFileError,
+} from "/i18n.js";
 
 const FinanceContext = createContext(null);
 export const useFinance = () => useContext(FinanceContext);
 export function FinanceProvider({ children }) {
+  const language = useSyncExternalStore(subscribeLanguage, getLanguage);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.title = language === "en" ? "Finance" : "Финансы";
+  }, [language]);
   const [current, setCurrent] = useState(null);
   const latest = useRef(null);
   const [period, setPeriod] = useState(() => periodRange("month"));
@@ -104,7 +116,7 @@ export function FinanceProvider({ children }) {
         );
       };
       if (typeof background === "function" ? background() : background)
-        toast(`Добавлено операций: ${ids.length}`, {
+        toast(t("Добавлено операций: {count}", { count: ids.length }), {
           label: "Показать",
           run: show,
         });
@@ -156,6 +168,7 @@ export function FinanceProvider({ children }) {
     <FinanceContext.Provider
       value={{
         current,
+        language,
         refresh,
         toast,
         fail,
@@ -171,7 +184,7 @@ export function FinanceProvider({ children }) {
         children
       ) : (
         <main className="boot" role="status">
-          Открываем ваши записи…
+          {t("Открываем ваши записи…")}
         </main>
       )}
       {createPortal(
@@ -181,12 +194,12 @@ export function FinanceProvider({ children }) {
           role="status"
           aria-live="polite"
         >
-          {notice?.message}
+          {notice?.message ? translateFileError(notice.message) : null}
           {notice?.action && (
             <>
               {" "}
               <button className="text-button" onClick={notice.action.run}>
-                {notice.action.label}
+                {t(notice.action.label)}
               </button>
             </>
           )}

@@ -1,3 +1,4 @@
+import { t } from "/i18n.js";
 import { useEffect, useState } from "react";
 import { currencyCode } from "/model.js";
 import { useFinance } from "./FinanceProvider.jsx";
@@ -40,20 +41,20 @@ export default function App() {
   const offline = !navigator.onLine,
     issues = current.pending.filter((x) => x.status !== "pending");
   const status = current.settings.revoked
-    ? "Доступ отозван"
+    ? t("Доступ отозван")
     : current.settings.authRequired
-      ? "Нужен вход"
+      ? t("Нужен вход")
       : !current.settings.connected
-        ? "Локальный учет"
+        ? t("Локальный учет")
         : offline
-          ? "Без сети"
+          ? t("Без сети")
           : current.pending.length
-            ? `${current.pending.length} в очереди`
-            : "Сохранено";
+            ? t("{count} в очереди", { count: current.pending.length })
+            : t("Сохранено");
   const sync = (
     <button
       className="icon-button"
-      aria-label="Синхронизировать"
+      aria-label={t("Синхронизировать")}
       onClick={() => window.dispatchEvent(new Event("finance-sync"))}
     >
       <Icon name="sync" />
@@ -81,19 +82,19 @@ export default function App() {
               src="/icon.svg"
               width="32"
               height="32"
-              alt="Финансы"
+              alt={t("Финансы")}
             />
             <div className="overview-account">
               <Icon name="wallet" />
               <select
                 id="overview-account"
-                aria-label="Счет обзора"
+                aria-label={t("Счет обзора")}
                 value={filters.account}
                 onChange={(e) =>
                   setFilters((f) => ({ ...f, account: e.target.value }))
                 }
               >
-                <option value="">Итого</option>
+                <option value="">{t("Итого")}</option>
                 {current.state.accounts
                   .filter((a) => !a.deleted)
                   .map((a) => (
@@ -113,14 +114,14 @@ export default function App() {
           </header>
         ) : view === "entries" ? (
           <header className="topbar entries-header">
-            <h1>Операции</h1>
+            <h1>{t("Операции")}</h1>
             <div className="row">
               {dot}
               {sync}
               {!current.settings.revoked && (
                 <button
                   className="icon-button entry-add"
-                  aria-label="Добавить"
+                  aria-label={t("Добавить")}
                   onClick={() => setEntry({})}
                 >
                   <Icon name="plus" />
@@ -138,7 +139,7 @@ export default function App() {
                 height="36"
                 alt=""
               />
-              <span>Финансы</span>
+              <span>{t("Финансы")}</span>
             </div>
             <div className="row">
               {dot}
@@ -147,38 +148,39 @@ export default function App() {
           </header>
         )}
         <aside id="app-update" className="update-banner" hidden={!updateReady}>
-          <span>Новая версия готова</span>
+          <span>{t("Новая версия готова")}</span>
           <button
             className="secondary"
             onClick={() =>
               window.dispatchEvent(new Event("finance-apply-update"))
             }
           >
-            Обновить
+            {t("Обновить")}
           </button>
         </aside>
         {current.settings.revoked && (
           <div className="error-banner">
-            Доступ к общей книге отозван. Локальная копия закрыта. Скачайте свою
-            резервную копию и выйдите в настройках.
+            {t(
+              "Доступ к общей книге отозван. Локальная копия закрыта. Скачайте свою резервную копию и выйдите в настройках.",
+            )}
           </div>
         )}
         {current.settings.authRequired && (
           <div className="error-banner">
-            Сессия завершена. Записи на устройстве сохранены.{" "}
+            {t("Сессия завершена. Записи на устройстве сохранены.")}{" "}
             <button className="text-button" onClick={() => settings("recover")}>
-              Войти по ключу
+              {t("Войти по ключу")}
             </button>
           </div>
         )}
         {!!issues.length && (
           <div className="error-banner">
-            {issues.length} изменений требуют внимания.{" "}
+            {t("{count} изменений требуют внимания.", { count: issues.length })}{" "}
             <button
               className="text-button"
               onClick={() => settings("conflicts")}
             >
-              Разобрать
+              {t("Разобрать")}
             </button>
           </div>
         )}
@@ -196,7 +198,7 @@ export default function App() {
         )}
         <Settings visible={view === "settings"} />
       </div>
-      <nav className="nav" aria-label="Основная навигация">
+      <nav className="nav" aria-label={t("Основная навигация")}>
         {tabs.map(([id, label, icon]) => (
           <a
             key={id}
@@ -205,7 +207,7 @@ export default function App() {
             aria-current={view === id ? "page" : undefined}
           >
             <Icon name={icon} />
-            {label}
+            {t(label)}
           </a>
         ))}
       </nav>

@@ -43,6 +43,7 @@ export async function prepareVoice(original) {
       audio: chat.bufferBase64(buffer),
       original,
       label: `Голос · ${Math.ceil(decoded.duration)} сек.`,
+      duration: Math.ceil(decoded.duration),
     };
   } finally {
     if (context && context.state !== "closed")
@@ -64,6 +65,7 @@ export async function prepareImage(file) {
     return {
       image: canvas.toDataURL("image/jpeg", 0.82),
       label: "Фото чека · " + file.name,
+      fileName: file.name,
     };
   } catch (error) {
     throw Error(

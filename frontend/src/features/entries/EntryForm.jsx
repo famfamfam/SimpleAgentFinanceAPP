@@ -1,3 +1,4 @@
+import { t } from "/i18n.js";
 import { useEffect, useRef, useState } from "react";
 import * as db from "/db.js";
 import { sync } from "/sync.js";
@@ -152,7 +153,7 @@ export default function EntryForm({ entry = {}, onClose }) {
       onClose();
       if (existing) await refresh();
       else await revealEntries([item.id], scope.current.bookId);
-      toast(existing ? "Изменения сохранены" : "Сохранено на устройстве");
+      toast(t(existing ? "Изменения сохранены" : "Сохранено на устройстве"));
       background();
     } catch (e) {
       if (alive.current) setError(e.message);
@@ -164,9 +165,11 @@ export default function EntryForm({ entry = {}, onClose }) {
     if (
       busy ||
       !confirm(
-        current.settings.connected
-          ? "Удалить операцию? Изменение будет отправлено участникам книги."
-          : "Удалить операцию из локального учета?",
+        t(
+          current.settings.connected
+            ? "Удалить операцию? Изменение будет отправлено участникам книги."
+            : "Удалить операцию из локального учета?",
+        ),
       )
     )
       return;
@@ -217,7 +220,7 @@ export default function EntryForm({ entry = {}, onClose }) {
         );
         await writeDraft(
           scope.current,
-          `${draft.kind === "income" ? "Доход" : draft.kind === "transfer" ? "Перевод" : "Расход"} ${draft.amount ? draft.amount + " " + (code === "RUB" ? "₽" : code) : ""} ${draft.note || ""}`
+          `${t(draft.kind === "income" ? "Доход" : draft.kind === "transfer" ? "Перевод" : "Расход")} ${draft.amount ? draft.amount + " " + (code === "RUB" ? "₽" : code) : ""} ${draft.note || ""}`
             .trim()
             .slice(0, 4096),
         );
@@ -284,18 +287,19 @@ export default function EntryForm({ entry = {}, onClose }) {
     );
   if (archived)
     return (
-      <Dialog title="Архивная операция" onClose={close}>
+      <Dialog title={t("Архивная операция")} onClose={close}>
         <p>
           {draft.date} ·{" "}
           {formatMoney(cents(draft.amount), currencyCode(draft.currency))}
         </p>
         <p className="small spaced">{draft.note}</p>
         <p className="small spaced">
-          Счет или категория в архиве. Эта запись доступна для просмотра и
-          удаления.
+          {t(
+            "Счет или категория в архиве. Эта запись доступна для просмотра и удаления.",
+          )}
         </p>
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
         <div className="form-actions">
           <button
@@ -305,7 +309,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             disabled={busy}
             onClick={remove}
           >
-            Удалить операцию
+            {t("Удалить операцию")}
           </button>
         </div>
       </Dialog>
@@ -324,7 +328,7 @@ export default function EntryForm({ entry = {}, onClose }) {
     <>
       <div className="row between field-heading">
         <label htmlFor="entry-account">
-          {draft.kind === "transfer" ? "Откуда" : "Счет"}
+          {t(draft.kind === "transfer" ? "Откуда" : "Счет")}
         </label>
         <button
           type="button"
@@ -333,7 +337,7 @@ export default function EntryForm({ entry = {}, onClose }) {
           onClick={() => setNested("account")}
         >
           <Icon name="plus" />
-          Новый счет
+          {t("Новый счет")}
         </button>
       </div>
       <select
@@ -349,7 +353,7 @@ export default function EntryForm({ entry = {}, onClose }) {
           )
         }
       >
-        <option value="">Выберите счет</option>
+        <option value="">{t("Выберите счет")}</option>
         {accounts.map((a) => (
           <option
             key={a.id}
@@ -370,7 +374,7 @@ export default function EntryForm({ entry = {}, onClose }) {
   );
   return (
     <Dialog
-      title={existing ? "Изменить операцию" : "Новая операция"}
+      title={t(existing ? "Изменить операцию" : "Новая операция")}
       onClose={close}
     >
       <form id="entry-form" onSubmit={save}>
@@ -391,12 +395,14 @@ export default function EntryForm({ entry = {}, onClose }) {
                 setDraft((previous) => ({ ...previous, kind, categoryId: "" }))
               }
             >
-              {label}
+              {t(label)}
             </button>
           ))}
         </div>
         <label htmlFor="entry-amount" className="entry-amount-label">
-          Сумма, {sourceCurrency === "RUB" ? "₽" : sourceCurrency}
+          {t("Сумма, {currency}", {
+            currency: sourceCurrency === "RUB" ? "₽" : sourceCurrency,
+          })}
         </label>
         <div className="amount-entry">
           <input
@@ -406,7 +412,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             inputMode="decimal"
             enterKeyHint="done"
             placeholder="0"
-            aria-label="Сумма"
+            aria-label={t("Сумма")}
             required
             autoComplete="off"
             value={draft.amount}
@@ -423,8 +429,8 @@ export default function EntryForm({ entry = {}, onClose }) {
               type="button"
               data-action="entry-assistant"
               className="amount-assistant"
-              aria-label="Добавить через помощника"
-              title="Добавить через помощника: текст, голос или чек"
+              aria-label={t("Добавить через помощника")}
+              title={t("Добавить через помощника: текст, голос или чек")}
               onClick={assistant}
               disabled={busy}
             >
@@ -436,7 +442,7 @@ export default function EntryForm({ entry = {}, onClose }) {
           <>
             {accountFields}
             <div className="row between field-heading">
-              <label htmlFor="entry-to">Куда</label>
+              <label htmlFor="entry-to">{t("Куда")}</label>
               <button
                 type="button"
                 data-action="entry-new-to-account"
@@ -444,7 +450,7 @@ export default function EntryForm({ entry = {}, onClose }) {
                 onClick={() => setNested("toAccount")}
               >
                 <Icon name="plus" />
-                Новый счет получателя
+                {t("Новый счет получателя")}
               </button>
             </div>
             <select
@@ -459,7 +465,7 @@ export default function EntryForm({ entry = {}, onClose }) {
                 }))
               }
             >
-              <option value="">Выберите счет</option>
+              <option value="">{t("Выберите счет")}</option>
               {accounts
                 .filter((a) => a.id !== draft.accountId)
                 .map((a) => (
@@ -474,7 +480,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             {draft.toAccountId && sourceCurrency !== destinationCurrency && (
               <>
                 <label htmlFor="entry-to-amount">
-                  Получено, {destinationCurrency}
+                  {t("Получено, {currency}", { currency: destinationCurrency })}
                 </label>
                 <input
                   id="entry-to-amount"
@@ -491,7 +497,7 @@ export default function EntryForm({ entry = {}, onClose }) {
         ) : (
           <>
             <div className="row between field-heading">
-              <label>Категория</label>
+              <label>{t("Категория")}</label>
               <button
                 type="button"
                 data-action="entry-new-category"
@@ -499,7 +505,7 @@ export default function EntryForm({ entry = {}, onClose }) {
                 onClick={() => setNested("category")}
               >
                 <Icon name="plus" />
-                Новая категория
+                {t("Новая категория")}
               </button>
             </div>
             <input
@@ -511,8 +517,8 @@ export default function EntryForm({ entry = {}, onClose }) {
               <input
                 id="category-search"
                 type="search"
-                placeholder="Найти категорию"
-                aria-label="Поиск категории"
+                placeholder={t("Найти категорию")}
+                aria-label={t("Поиск категории")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => {
@@ -538,7 +544,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             </div>
             {!shown.length && (
               <p className="small" id="category-empty">
-                Категория не найдена. Можно создать новую.
+                {t("Категория не найдена. Можно создать новую.")}
               </p>
             )}
             {cats.length > 9 && (
@@ -550,15 +556,15 @@ export default function EntryForm({ entry = {}, onClose }) {
                 onClick={() => setExpanded(!expanded)}
               >
                 {expanded
-                  ? "Свернуть категории"
-                  : `Все категории (${cats.length})`}
+                  ? t("Свернуть категории")
+                  : t("Все категории ({count})", { count: cats.length })}
               </button>
             )}
           </>
         )}
         <div className="form-grid">
           <div>
-            <label htmlFor="entry-date">Дата</label>
+            <label htmlFor="entry-date">{t("Дата")}</label>
             <input
               id="entry-date"
               name="date"
@@ -569,7 +575,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             />
           </div>
           <div>
-            <label htmlFor="entry-time">Время</label>
+            <label htmlFor="entry-time">{t("Время")}</label>
             <input
               id="entry-time"
               name="time"
@@ -594,7 +600,7 @@ export default function EntryForm({ entry = {}, onClose }) {
                 className={`pill ${draft.date === value ? "active" : ""}`}
                 onClick={() => set("date", value)}
               >
-                {label}
+                {t(label)}
               </button>
             );
           })}
@@ -606,10 +612,10 @@ export default function EntryForm({ entry = {}, onClose }) {
             onToggle={(e) => setAccountExpanded(e.currentTarget.open)}
           >
             <summary>
-              Счет:{" "}
+              {t("Счет")}:{" "}
               <span id="entry-account-name">
                 {accounts.find((a) => a.id === draft.accountId)?.name ||
-                  "Выберите счет"}
+                  t("Выберите счет")}
               </span>
             </summary>
             {accountFields}
@@ -619,8 +625,8 @@ export default function EntryForm({ entry = {}, onClose }) {
           open={notesExpanded}
           onToggle={(event) => setNotesExpanded(event.currentTarget.open)}
         >
-          <summary>Комментарий и теги</summary>
-          <label htmlFor="entry-note">Комментарий</label>
+          <summary>{t("Комментарий и теги")}</summary>
+          <label htmlFor="entry-note">{t("Комментарий")}</label>
           <textarea
             id="entry-note"
             name="note"
@@ -628,7 +634,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             value={draft.note || ""}
             onChange={(e) => set("note", e.target.value)}
           />
-          <label htmlFor="entry-tags">Теги</label>
+          <label htmlFor="entry-tags">{t("Теги")}</label>
           <input
             id="entry-tags"
             name="tags"
@@ -638,7 +644,7 @@ export default function EntryForm({ entry = {}, onClose }) {
           />
         </details>
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
         <div className="form-actions">
           {existing && (
@@ -646,7 +652,7 @@ export default function EntryForm({ entry = {}, onClose }) {
               type="button"
               data-action="delete-entry"
               className="danger"
-              aria-label="Удалить операцию"
+              aria-label={t("Удалить операцию")}
               disabled={busy}
               onClick={remove}
             >
@@ -654,7 +660,7 @@ export default function EntryForm({ entry = {}, onClose }) {
             </button>
           )}
           <button className="primary" type="submit" disabled={busy}>
-            Сохранить
+            {t("Сохранить")}
           </button>
         </div>
       </form>

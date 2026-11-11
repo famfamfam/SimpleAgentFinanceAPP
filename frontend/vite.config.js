@@ -2,7 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 
-const shared = /^\/(db|chat-db|sync|model|icons|release)\.js$/;
+const shared =
+  /^\/(db|chat-db|sync|model|icons|release|i18n|en|en-screens|en-forms)\.js$/;
 const apiTarget = process.env.VITE_API_TARGET || "http://127.0.0.1:18080";
 const proxy = {
   target: apiTarget,
@@ -31,7 +32,8 @@ export default defineConfig({
     preTransformRequests: false,
     proxy: {
       "^/(api|mcp)(/|$)": proxy,
-      "^/(db|chat-db|sync|model|icons|release)\\.js$": proxy,
+      "^/(db|chat-db|sync|model|icons|release|i18n|en|en-screens|en-forms)\\.js$":
+        proxy,
       "^/(icon.*|manifest\\.webmanifest)$": proxy,
     },
   },

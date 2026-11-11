@@ -2,6 +2,7 @@ import * as db from "/db.js";
 import * as chat from "/chat-db.js";
 import { api, sync, syncChat } from "/sync.js";
 import { derivedID, today, clock } from "/model.js";
+import { getLanguage } from "/i18n.js";
 
 const listeners = new Set();
 const activities = new Set();
@@ -186,6 +187,7 @@ export async function sendAssistant(
     clickedAt = new Date();
   const input = {
     id: crypto.randomUUID(),
+    language: getLanguage(),
     text: text.trim(),
     taskId: active?.taskId || crypto.randomUUID(),
     mode: "auto",

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 test.use({ serviceWorkers: "block" });
 
 test.beforeEach(async ({ page }) => {
-  await page.route(/\/(db|chat-db|sync|model|icons|release)\.js$/, async route => {
+  await page.route(/\/(db|chat-db|sync|model|icons|release|i18n|en|en-screens|en-forms)\.js$/, async route => {
     const path = new URL(route.request().url()).pathname;
     await route.fulfill({ contentType: "text/javascript", body: await readFile(`backend/web${path}`) });
   });

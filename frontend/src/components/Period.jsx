@@ -1,12 +1,13 @@
+import { t, getLanguage, translateFileError } from "/i18n.js";
 import { useState } from "react";
 import { periodRange, shiftPeriod, today, dayLabel } from "/model.js";
 import { useFinance } from "../FinanceProvider.jsx";
 import { Dialog, Icon } from "./ui.jsx";
 
 export function periodLabel(value) {
-  if (value.mode === "all") return "Всё время";
+  if (value.mode === "all") return t("Всё время");
   if (value.mode === "month")
-    return new Intl.DateTimeFormat("ru-RU", {
+    return new Intl.DateTimeFormat(getLanguage() === "en" ? "en-GB" : "ru-RU", {
       month: "long",
       year: "numeric",
     }).format(new Date(value.from + "T12:00:00"));
@@ -55,7 +56,7 @@ export default function Period({ shortcuts = false }) {
     try {
       preview = periodLabel(read());
     } catch {
-      preview = "Проверьте даты";
+      preview = t("Проверьте даты");
     }
   }
   const change = (event) =>
@@ -63,7 +64,10 @@ export default function Period({ shortcuts = false }) {
   return (
     <>
       {shortcuts && (
-        <div className="period-shortcuts" aria-label="Быстрый выбор периода">
+        <div
+          className="period-shortcuts"
+          aria-label={t("Быстрый выбор периода")}
+        >
           {[
             ["day", "День"],
             ["week", "Неделя"],
@@ -88,7 +92,7 @@ export default function Period({ shortcuts = false }) {
                     : setPeriod(periodRange(mode))
                 }
               >
-                {label}
+                {t(label)}
               </button>
             );
           })}
@@ -100,7 +104,7 @@ export default function Period({ shortcuts = false }) {
             type="button"
             className="icon-button"
             data-action="prev"
-            aria-label="Предыдущий период"
+            aria-label={t("Предыдущий период")}
             onClick={() => setPeriod(shiftPeriod(period, -1))}
           >
             <Icon name="left" />
@@ -110,7 +114,7 @@ export default function Period({ shortcuts = false }) {
           type="button"
           className="period-label"
           data-action="period"
-          aria-label="Выбрать период"
+          aria-label={t("Выбрать период")}
           onClick={() => open()}
         >
           {periodLabel(period)}
@@ -120,7 +124,7 @@ export default function Period({ shortcuts = false }) {
             type="button"
             className="icon-button"
             data-action="next"
-            aria-label="Следующий период"
+            aria-label={t("Следующий период")}
             onClick={() => setPeriod(shiftPeriod(period, 1))}
           >
             <Icon name="right" />
@@ -128,9 +132,12 @@ export default function Period({ shortcuts = false }) {
         )}
       </div>
       {draft && (
-        <Dialog title="Выбор периода" onClose={() => !busy && setDraft(null)}>
+        <Dialog
+          title={t("Выбор периода")}
+          onClose={() => !busy && setDraft(null)}
+        >
           <form onSubmit={apply}>
-            <label htmlFor="period-mode">Период</label>
+            <label htmlFor="period-mode">{t("Период")}</label>
             <select
               id="period-mode"
               name="mode"
@@ -146,7 +153,7 @@ export default function Period({ shortcuts = false }) {
                 ["all", "Всё время"],
               ].map(([value, label]) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
@@ -154,7 +161,7 @@ export default function Period({ shortcuts = false }) {
               id="period-anchor"
               hidden={["range", "all"].includes(draft.mode)}
             >
-              <label htmlFor="period-date">Дата</label>
+              <label htmlFor="period-date">{t("Дата")}</label>
               <input
                 id="period-date"
                 name="anchor"
@@ -169,7 +176,7 @@ export default function Period({ shortcuts = false }) {
               hidden={draft.mode !== "range"}
             >
               <div>
-                <label htmlFor="period-from">С</label>
+                <label htmlFor="period-from">{t("С")}</label>
                 <input
                   id="period-from"
                   name="from"
@@ -179,7 +186,7 @@ export default function Period({ shortcuts = false }) {
                 />
               </div>
               <div>
-                <label htmlFor="period-to">По</label>
+                <label htmlFor="period-to">{t("По")}</label>
                 <input
                   id="period-to"
                   name="to"
@@ -193,19 +200,19 @@ export default function Period({ shortcuts = false }) {
               {preview}
             </p>
             <p className="small spaced">
-              Экспорт: все типы операций ·{" "}
+              {t("Экспорт: все типы операций ·")}{" "}
               {filters.account
                 ? current.state.accounts.find(
                     (account) => account.id === filters.account,
-                  )?.name || "Счет"
-                : "все счета"}
+                  )?.name || t("Счет")
+                : t("все счета")}
             </p>
             <p className="form-error" role="alert">
-              {error}
+              {error ? translateFileError(error) : null}
             </p>
             <div className="form-actions">
               <button className="primary" type="submit" disabled={busy}>
-                Применить
+                {t("Применить")}
               </button>
               <button
                 type="button"
@@ -214,7 +221,7 @@ export default function Period({ shortcuts = false }) {
                 disabled={busy}
                 onClick={(event) => apply(event, true)}
               >
-                Выгрузить XLSX
+                {t("Выгрузить XLSX")}
               </button>
             </div>
           </form>

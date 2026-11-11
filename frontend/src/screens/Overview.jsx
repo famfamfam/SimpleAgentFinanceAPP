@@ -1,3 +1,4 @@
+import { t } from "/i18n.js";
 import { useState } from "react";
 import {
   cents,
@@ -39,7 +40,7 @@ export default function Overview({ onEntry }) {
       );
   const sorted = [...groups].sort((a, b) => b[1] - a[1]);
   const total = totals[ringKind];
-  const label = ringKind === "expense" ? "Расходы" : "Доходы";
+  const label = t(ringKind === "expense" ? "Расходы" : "Доходы");
   const category = (id) =>
     current.state.categories.find((item) => item.id === id);
   let offset = 0;
@@ -58,7 +59,8 @@ export default function Overview({ onEntry }) {
         strokeDashoffset={-offset}
       >
         <title>
-          {category(id)?.name || "Категория"}: {rub(sum)} · {Math.round(share)}%
+          {category(id)?.name || t("Категория")}: {rub(sum)} ·{" "}
+          {Math.round(share)}%
         </title>
       </circle>
     );
@@ -67,7 +69,7 @@ export default function Overview({ onEntry }) {
   });
   return (
     <div className="overview">
-      <h1 className="visually-hidden">Ваши финансы</h1>
+      <h1 className="visually-hidden">{t("Ваши финансы")}</h1>
       <div className="overview-kind">
         {[
           ["expense", "Расходы"],
@@ -80,7 +82,7 @@ export default function Overview({ onEntry }) {
             className={ringKind === kind ? "active" : ""}
             onClick={() => setRingKind(kind)}
           >
-            {name}
+            {t(name)}
           </button>
         ))}
       </div>
@@ -88,7 +90,7 @@ export default function Overview({ onEntry }) {
         <Period shortcuts />
         {codes.length > 1 && (
           <label>
-            Валюта
+            {t("Валюта")}
             <select
               value={selectedCurrency}
               onChange={(e) => setCurrency(e.target.value)}
@@ -105,7 +107,10 @@ export default function Overview({ onEntry }) {
           <div
             className="expense-chart"
             role="img"
-            aria-label={`${label} по категориям: ${rub(total)}`}
+            aria-label={t("{label} по категориям: {total}", {
+              label,
+              total: rub(total),
+            })}
           >
             <svg viewBox="0 0 120 120" aria-hidden="true">
               <circle className="chart-track" cx="60" cy="60" r="48" />
@@ -127,7 +132,7 @@ export default function Overview({ onEntry }) {
             type="button"
             className="chart-add"
             data-action="new-entry"
-            aria-label="Добавить"
+            aria-label={t("Добавить")}
             onClick={() => onEntry({})}
           >
             <Icon name="plus" />
@@ -135,16 +140,16 @@ export default function Overview({ onEntry }) {
         </div>
         <div className="period-totals">
           <span>
-            Доходы <strong>{rub(totals.income)}</strong>
+            {t("Доходы")} <strong>{rub(totals.income)}</strong>
           </span>
           <span>
-            Расходы <strong>{rub(totals.expense)}</strong>
+            {t("Расходы")} <strong>{rub(totals.expense)}</strong>
           </span>
         </div>
       </section>
       <section
         className="overview-categories"
-        aria-label={`${label} по категориям`}
+        aria-label={t("{label} по категориям", { label })}
       >
         {sorted.length ? (
           sorted.map(([id, sum]) => (
@@ -166,7 +171,7 @@ export default function Overview({ onEntry }) {
             >
               <ColoredIcon category={category(id)} />
               <span className="category-label">
-                {category(id)?.name || "Категория"}
+                {category(id)?.name || t("Категория")}
               </span>
               <span className="category-percent">
                 {Math.round((sum / total) * 100)}%
@@ -176,7 +181,11 @@ export default function Overview({ onEntry }) {
           ))
         ) : (
           <p className="small chart-empty">
-            {ringKind === "expense" ? "Расходов" : "Доходов"} за этот период нет
+            {t(
+              ringKind === "expense"
+                ? "Расходов за этот период нет"
+                : "Доходов за этот период нет",
+            )}
           </p>
         )}
       </section>

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { t, getLanguage } from "/i18n.js";
 import * as db from "/db.js";
 import * as chat from "/chat-db.js";
 import { colors, derivedID, icons, validateEntry } from "/model.js";
@@ -102,6 +103,7 @@ export default function CategoryProposal({
       await assertAssistantScope(settings);
       const input = (request.current ||= {
         id: crypto.randomUUID(),
+        language: getLanguage(),
         name: draft.name.trim(),
         kind: draft.kind,
         icons: [...new Set(icons)].map((id) => ({
@@ -254,8 +256,10 @@ export default function CategoryProposal({
   };
   return (
     <div className="chat-category" data-category-card={message.replyTo}>
-      <h3>{existing ? "Категория уже есть" : "Новая категория"}</h3>
-      <label htmlFor={`chat-category-name-${message.replyTo}`}>Название</label>
+      <h3>{t(existing ? "Категория уже есть" : "Новая категория")}</h3>
+      <label htmlFor={`chat-category-name-${message.replyTo}`}>
+        {t("Название")}
+      </label>
       <input
         id={`chat-category-name-${message.replyTo}`}
         data-category-field="name"
@@ -264,7 +268,9 @@ export default function CategoryProposal({
         value={draft.name}
         onChange={(e) => change({ name: e.target.value })}
       />
-      <label htmlFor={`chat-category-kind-${message.replyTo}`}>Тип</label>
+      <label htmlFor={`chat-category-kind-${message.replyTo}`}>
+        {t("Тип")}
+      </label>
       <select
         id={`chat-category-kind-${message.replyTo}`}
         data-category-field="kind"
@@ -272,15 +278,15 @@ export default function CategoryProposal({
         value={draft.kind}
         onChange={(e) => change({ kind: e.target.value })}
       >
-        <option value="expense">Расходы</option>
-        <option value="income">Доходы</option>
+        <option value="expense">{t("Расходы")}</option>
+        <option value="income">{t("Доходы")}</option>
       </select>
       <div className="category-proposal-preview">
         <ColoredIcon category={existing || draft} />
         <span>
           {existing
-            ? "Будет использована существующая категория"
-            : draft.name || "Категория"}
+            ? t("Будет использована существующая категория")
+            : draft.name || t("Категория")}
         </span>
       </div>
       {!existing && (
@@ -288,7 +294,7 @@ export default function CategoryProposal({
           <div
             className="category-style-options"
             role="group"
-            aria-label="Оформление категории"
+            aria-label={t("Оформление категории")}
           >
             {draft.styles.map((v, i) => (
               <button
@@ -302,14 +308,14 @@ export default function CategoryProposal({
                 onClick={() => select(v)}
               >
                 <ColoredIcon category={v} />
-                <span>{iconNames[v.icon] || v.icon}</span>
+                <span>{iconNames[v.icon] ? t(iconNames[v.icon]) : v.icon}</span>
               </button>
             ))}
           </div>
           <p className="small" role="status">
             {busy
-              ? "Подбираем варианты…"
-              : error || "Значок и цвет можно выбрать вручную"}
+              ? t("Подбираем варианты…")
+              : t(error || "Значок и цвет можно выбрать вручную")}
           </p>
           <div className="category-proposal-tools">
             <button
@@ -321,7 +327,7 @@ export default function CategoryProposal({
               onClick={suggest}
             >
               <Icon name="spark" />
-              {draft.styles.length ? "Другие варианты" : "Подобрать с ИИ"}
+              {t(draft.styles.length ? "Другие варианты" : "Подобрать с ИИ")}
             </button>
             <button
               type="button"
@@ -333,7 +339,7 @@ export default function CategoryProposal({
                 setManual(true);
               }}
             >
-              Выбрать вручную
+              {t("Выбрать вручную")}
             </button>
           </div>
         </>
@@ -346,11 +352,13 @@ export default function CategoryProposal({
         disabled={busy || !draft.name.trim() || (!existing && !draft.chosen)}
         onClick={create}
       >
-        {existing
-          ? "Использовать"
-          : message.result.receipt && message.result.entries?.length
-            ? "Проверить чек и создать"
-            : "Создать"}
+        {t(
+          existing
+            ? "Использовать"
+            : message.result.receipt && message.result.entries?.length
+              ? "Проверить чек и создать"
+              : "Создать",
+        )}
       </button>
       {manual && (
         <CatalogForm

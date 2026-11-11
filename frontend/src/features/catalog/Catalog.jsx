@@ -1,3 +1,4 @@
+import { getLanguage, t } from "/i18n.js";
 import { useEffect, useRef, useState } from "react";
 import * as db from "/db.js";
 import { api, sync } from "/sync.js";
@@ -245,7 +246,7 @@ export function Catalog({ entity, onClose }) {
         settings.bookId !== scope.current.bookId ||
         settings.userId !== scope.current.userId
       )
-        throw Error("Книга изменилась. Откройте список заново");
+        throw Error(t("Книга изменилась. Откройте список заново"));
       setEditing(item);
     } catch (error) {
       fail(error);
@@ -277,7 +278,7 @@ export function Catalog({ entity, onClose }) {
       />
     );
   return (
-    <Dialog title={account ? "Счета" : "Категории"} onClose={onClose}>
+    <Dialog title={t(account ? "Счета" : "Категории")} onClose={onClose}>
       <div className="catalog-toolbar">
         <button
           type="button"
@@ -286,28 +287,28 @@ export function Catalog({ entity, onClose }) {
           onClick={() => edit({})}
         >
           <Icon name="plus" />
-          {account ? "Новый счет" : "Новая категория"}
+          {t(account ? "Новый счет" : "Новая категория")}
         </button>
       </div>
-      <label htmlFor="catalog-search">Поиск</label>
+      <label htmlFor="catalog-search">{t("Поиск")}</label>
       <input
         id="catalog-search"
         type="search"
-        placeholder="По названию"
+        placeholder={t("По названию")}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       {!account && (
         <>
-          <label htmlFor="catalog-kind">Тип категории</label>
+          <label htmlFor="catalog-kind">{t("Тип категории")}</label>
           <select
             id="catalog-kind"
             value={kind}
             onChange={(e) => setKind(e.target.value)}
           >
-            <option value="">Все категории</option>
-            <option value="expense">Расходы</option>
-            <option value="income">Доходы</option>
+            <option value="">{t("Все категории")}</option>
+            <option value="expense">{t("Расходы")}</option>
+            <option value="income">{t("Доходы")}</option>
           </select>
         </>
       )}
@@ -326,14 +327,14 @@ export function Catalog({ entity, onClose }) {
               {account && (
                 <span className="small">
                   {" "}
-                  · Остаток:{" "}
+                  · {t("Остаток")}:{" "}
                   {formatMoney(balances[x.id], currencyCode(x.currency))}
                 </span>
               )}
               {!account && (
                 <span className="small">
                   {" "}
-                  · {x.kind === "expense" ? "расход" : "доход"}
+                  · {t(x.kind === "expense" ? "расход" : "доход")}
                 </span>
               )}
             </span>
@@ -342,7 +343,10 @@ export function Catalog({ entity, onClose }) {
               className="icon-button"
               data-action={account ? "edit-account" : "edit-category"}
               data-id={x.id}
-              aria-label={`Изменить ${account ? "счет" : "категорию"} ${x.name}`}
+              aria-label={t(
+                account ? "Изменить счет {name}" : "Изменить категорию {name}",
+                { name: x.name },
+              )}
               onClick={() => edit(x)}
             >
               <Icon name="edit" />
@@ -352,7 +356,7 @@ export function Catalog({ entity, onClose }) {
       </div>
       {!items.length && (
         <p className="small spaced" id="catalog-empty">
-          Ничего не найдено
+          {t("Ничего не найдено")}
         </p>
       )}
     </Dialog>
@@ -472,7 +476,7 @@ export function CatalogForm({
   const archive = async () => {
     if (
       busy ||
-      !confirm("Переместить в архив? Исторические операции сохранятся.")
+      !confirm(t("Переместить в архив? Исторические операции сохранятся."))
     )
       return;
     setBusy(true);
@@ -501,12 +505,14 @@ export function CatalogForm({
     if (busy || !form.name.trim()) return;
     if (!navigator.onLine) {
       toast(
-        "Для подбора через ИИ нужен интернет. Значок и цвет можно выбрать вручную.",
+        t(
+          "Для подбора через ИИ нужен интернет. Значок и цвет можно выбрать вручную.",
+        ),
       );
       return;
     }
     if (!current.settings.connected) {
-      toast("Сначала подключите синхронизацию в настройках");
+      toast(t("Сначала подключите синхронизацию в настройках"));
       return;
     }
     const key = JSON.stringify([form.name.trim(), form.kind]),
@@ -521,6 +527,7 @@ export function CatalogForm({
         const v = variants.current;
         v.input ||= {
           id: crypto.randomUUID(),
+          language: getLanguage(),
           name: form.name.trim(),
           kind: form.kind,
           icons: allIcons.map((id) => ({ id, label: iconNames[id] || id })),
@@ -552,7 +559,9 @@ export function CatalogForm({
           )
         )
           throw Error(
-            "ИИ вернул недоступное оформление. Выберите вручную или повторите подбор",
+            t(
+              "ИИ вернул недоступное оформление. Выберите вручную или повторите подбор",
+            ),
           );
         v.list = result.suggestions.slice();
         v.previous = result.suggestions;
@@ -563,7 +572,8 @@ export function CatalogForm({
         setForm((prev) => ({ ...prev, ...choice }));
       }
     } catch (e) {
-      if (alive.current && started === revision.current) fail(e);
+      if (alive.current && started === revision.current)
+        fail(new Error(t(e.message)));
     } finally {
       if (alive.current) setBusy(false);
     }
@@ -573,7 +583,7 @@ export function CatalogForm({
       (query || group !== "popular" || index < 16 || id === form.icon) &&
       (!iconGroups.find((g) => g.id === group) ||
         iconGroups.find((g) => g.id === group).icons.includes(id)) &&
-      `${iconNames[id] || ""} ${id}`
+      `${iconNames[id] || ""} ${iconNames[id] ? t(iconNames[id]) : ""} ${id}`
         .toLocaleLowerCase()
         .includes(query.trim().toLocaleLowerCase()),
   );
@@ -584,7 +594,7 @@ export function CatalogForm({
         type="button"
         className="color-choice"
         data-swatch={color}
-        aria-label={`Цвет ${color}`}
+        aria-label={t("Цвет {color}", { color })}
         aria-pressed={color === form.color}
         style={{ backgroundColor: color }}
         onClick={() => set("color", color)}
@@ -594,17 +604,15 @@ export function CatalogForm({
     <Dialog
       title={
         onPrepared
-          ? "Оформление категории"
+          ? t("Оформление категории")
           : existing
-            ? `Изменить ${account ? "счет" : "категорию"}`
-            : account
-              ? "Новый счет"
-              : "Новая категория"
+            ? t(account ? "Изменить счет" : "Изменить категорию")
+            : t(account ? "Новый счет" : "Новая категория")
       }
       onClose={() => !busy && onClose()}
     >
       <form onSubmit={save}>
-        <label htmlFor="catalog-name">Название</label>
+        <label htmlFor="catalog-name">{t("Название")}</label>
         <div className="row catalog-name">
           {!account && <ColoredIcon id="catalog-preview" category={form} />}
           <input
@@ -619,7 +627,7 @@ export function CatalogForm({
             <button
               type="button"
               className="icon-button category-ai"
-              aria-label="Подобрать значок и цвет с ИИ"
+              aria-label={t("Подобрать значок и цвет с ИИ")}
               aria-busy={busy}
               disabled={busy || !form.name.trim()}
               onClick={suggest}
@@ -630,7 +638,7 @@ export function CatalogForm({
         </div>
         {account ? (
           <>
-            <label htmlFor="catalog-currency">Валюта счета</label>
+            <label htmlFor="catalog-currency">{t("Валюта счета")}</label>
             <select
               id="catalog-currency"
               value={currencyCode(form.currency)}
@@ -649,7 +657,7 @@ export function CatalogForm({
                 </option>
               ))}
             </select>
-            <label htmlFor="catalog-opening">Начальный остаток</label>
+            <label htmlFor="catalog-opening">{t("Начальный остаток")}</label>
             <input
               id="catalog-opening"
               name="opening"
@@ -663,7 +671,7 @@ export function CatalogForm({
           <>
             <input type="hidden" name="icon" value={form.icon} />
             <input type="hidden" name="color" value={form.color} />
-            <label htmlFor="catalog-type">Тип</label>
+            <label htmlFor="catalog-type">{t("Тип")}</label>
             <select
               id="catalog-type"
               name="kind"
@@ -671,39 +679,39 @@ export function CatalogForm({
               value={form.kind}
               onChange={(e) => set("kind", e.target.value)}
             >
-              <option value="expense">Расходы</option>
-              <option value="income">Доходы</option>
+              <option value="expense">{t("Расходы")}</option>
+              <option value="income">{t("Доходы")}</option>
             </select>
-            <label htmlFor="icon-search">Значок</label>
+            <label htmlFor="icon-search">{t("Значок")}</label>
             <input
               id="icon-search"
-              aria-label="Поиск значка"
+              aria-label={t("Поиск значка")}
               type="search"
-              placeholder="Например: кафе, транспорт, спорт"
+              placeholder={t("Например: кафе, транспорт, спорт")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") e.preventDefault();
               }}
             />
-            <label htmlFor="icon-group">Раздел значков</label>
+            <label htmlFor="icon-group">{t("Раздел значков")}</label>
             <select
               id="icon-group"
               value={group}
               onChange={(e) => setGroup(e.target.value)}
             >
-              <option value="popular">Популярные</option>
-              <option value="all">Все значки</option>
+              <option value="popular">{t("Популярные")}</option>
+              <option value="all">{t("Все значки")}</option>
               {iconGroups.map((g) => (
                 <option key={g.id} value={g.id}>
-                  {g.name}
+                  {t(g.name)}
                 </option>
               ))}
             </select>
             <div
               className="icon-picker"
               role="group"
-              aria-label="Иконка категории"
+              aria-label={t("Иконка категории")}
             >
               {displayed.map((id) => (
                 <button
@@ -711,8 +719,8 @@ export function CatalogForm({
                   type="button"
                   className="icon-choice"
                   data-icon={id}
-                  aria-label={iconNames[id] || id}
-                  title={iconNames[id] || id}
+                  aria-label={iconNames[id] ? t(iconNames[id]) : id}
+                  title={iconNames[id] ? t(iconNames[id]) : id}
                   aria-pressed={id === form.icon}
                   onClick={() => set("icon", id)}
                 >
@@ -722,7 +730,7 @@ export function CatalogForm({
             </div>
             {!displayed.length && (
               <p className="small" id="icon-empty">
-                Значок не найден. Попробуйте другое название.
+                {t("Значок не найден. Попробуйте другое название.")}
               </p>
             )}
             <button
@@ -733,29 +741,31 @@ export function CatalogForm({
               onClick={() => setGroup(group === "all" ? "popular" : "all")}
             >
               {group === "all"
-                ? "Основные значки"
-                : `Все значки (${allIcons.length})`}
+                ? t("Основные значки")
+                : t("Все значки ({count})", { count: allIcons.length })}
             </button>
-            <label>Цвет</label>
+            <label>{t("Цвет")}</label>
             <div
               className="color-strip"
               role="group"
-              aria-label="Цвет категории"
+              aria-label={t("Цвет категории")}
             >
               {swatches(favoriteColors)}
             </div>
             <details className="color-details">
-              <summary>Больше цветов</summary>
-              <p className="small">{palette.length} готовых оттенков</p>
+              <summary>{t("Больше цветов")}</summary>
+              <p className="small">
+                {t("{count} готовых оттенков", { count: palette.length })}
+              </p>
               <div
                 className="color-palette"
                 role="group"
-                aria-label="Палитра цветов"
+                aria-label={t("Палитра цветов")}
               >
                 {swatches(palette)}
               </div>
               <label>
-                Свой цвет
+                {t("Свой цвет")}
                 <input
                   type="color"
                   id="custom-color"
@@ -767,7 +777,7 @@ export function CatalogForm({
           </>
         )}
         <p className="form-error" role="alert">
-          {error}
+          {t(error)}
         </p>
         <div className="form-actions">
           {existing && !onPrepared && (
@@ -778,7 +788,7 @@ export function CatalogForm({
               disabled={busy}
               onClick={archive}
             >
-              В архив
+              {t("В архив")}
             </button>
           )}
           <button
@@ -787,10 +797,10 @@ export function CatalogForm({
             onClick={onClose}
             disabled={busy}
           >
-            Назад
+            {t("Назад")}
           </button>
           <button className="primary" type="submit" disabled={busy}>
-            {onPrepared ? "Выбрать" : "Сохранить"}
+            {t(onPrepared ? "Выбрать" : "Сохранить")}
           </button>
         </div>
       </form>

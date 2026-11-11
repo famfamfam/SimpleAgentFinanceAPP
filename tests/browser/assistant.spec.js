@@ -1,6 +1,45 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import { initialState } from "../../backend/web/model.js";
 test.use({ serviceWorkers: "block" });
+
+test("new queued requests capture the current language without rewriting older inputs", async ({page, context}) => {
+  for (const file of ['i18n.js', 'en.js', 'en-screens.js', 'en-forms.js'])
+    await page.route(`**/${file}`, async route => route.fulfill({contentType:'application/javascript', body:await readFile(`backend/web/${file}`, 'utf8')}));
+  const sent = [];
+  await connected(page, async route => { sent.push(route.request().postDataJSON()); await route.fulfill({json:{text:"Ready",action:"answer",entries:[]}}); });
+  await context.setOffline(true);
+  const legacy = await page.evaluate(async () => {
+    const db = await import('/db.js'), settings = await db.meta('settings'), model = await import('/model.js');
+    const input = {id:crypto.randomUUID(), text:'Old request', date:'2026-01-01', accountId:model.initialState().accounts[0].id};
+    await db.enqueueAI({bookId:settings.bookId, ownerId:settings.userId, input, paused:true});
+    return input;
+  });
+  await page.locator("#ai-text").fill("First request");
+  await page.locator('form:has(#ai-text) button[type="submit"]').click();
+  await expect.poll(() => page.evaluate(async () => ((await (await import('/db.js')).meta('ai-queue')) || []).length)).toBe(2);
+  const first = await page.evaluate(async () => (await (await import('/db.js')).meta('ai-queue'))[1].input);
+  expect(first.language).toBe('ru');
+  await page.evaluate(async () => (await import('/i18n.js')).setLanguage('en'));
+  await page.locator("#ai-text").fill("Second request");
+  await page.locator('form:has(#ai-text) button[type="submit"]').click();
+  await expect.poll(() => page.evaluate(async () => ((await (await import('/db.js')).meta('ai-queue')) || []).length)).toBe(3);
+  const queue = await page.evaluate(async () => (await (await import('/db.js')).meta('ai-queue')).map(item => item.input));
+  expect(queue[0]).toEqual(legacy);
+  expect(queue[0].language).toBeUndefined();
+  expect(queue[1]).toEqual(first);
+  expect(queue[2].language).toBe('en');
+  await page.evaluate(async id => {
+    const db = await import('/db.js'), settings = await db.meta('settings');
+    await db.editAI(id, settings.bookId, { paused: false, retryAt: 0 });
+  }, legacy.id);
+  await context.setOffline(false);
+  await page.evaluate(() => window.dispatchEvent(new Event('online')));
+  await expect.poll(() => sent.length).toBe(3);
+  expect(sent[0]).toEqual(legacy);
+  expect(sent[1]).toEqual(first);
+  expect(sent[2]).toEqual(queue[2]);
+});
 
 test("AI queue changes are atomic across enqueue, completion and cancellation", async ({ page }) => {
   await page.goto("/");

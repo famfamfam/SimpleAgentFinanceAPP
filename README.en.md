@@ -2,7 +2,7 @@
 
 [Русский](README.md)
 
-A personal and shared finance application. Its interface is in Russian. It can be
+A personal and shared finance application with Russian and English interfaces. It can be
 installed as a PWA and used to record transactions offline.
 
 ![Overview with fabricated data](assets/screenshot.png)
@@ -38,7 +38,9 @@ Install from the browser menu: on iPhone, Safari → Share → Add to Home Scree
 on Android, Chrome menu → Install app. Wait until offline access is ready.
 Synchronization runs while the app is open. A server backup does not include
 changes still on a phone: synchronize them or download a local JSON backup. XLSX
-requires a running server.
+requires a running server. XLSX sheet names and headers remain in Russian for
+compatibility. Choose the interface language in Settings; existing names and
+records are not translated.
 
 For a shared book, save your personal recovery key and invite another member
 with a one-time code in Settings. Do not share the recovery key.

@@ -33,7 +33,8 @@ type CategoryStyleInput struct {
 		Icon  string `json:"icon"`
 		Color string `json:"color"`
 	} `json:"categories"`
-	Exclude []CategoryStyle `json:"exclude"`
+	Exclude  []CategoryStyle `json:"exclude"`
+	Language string          `json:"language,omitempty"`
 }
 
 var styleIconPattern = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]{0,29}$`)
@@ -43,6 +44,9 @@ func (a *App) modelPayload(messages []map[string]any, tools []any, maxTokens int
 	return map[string]any{"model": a.model, "messages": messages, "tools": tools, "max_tokens": maxTokens, "usage": map[string]bool{"include": true}, "reasoning": map[string]string{"effort": "medium"}, "temperature": 0.2, "provider": map[string]any{"sort": "price", "require_parameters": true, "allow_fallbacks": true, "data_collection": "deny", "max_price": map[string]float64{"prompt": 0.30, "completion": 1.70}}}
 }
 func (in CategoryStyleInput) validate() error {
+	if !validAssistantLanguage(in.Language) {
+		return bad("Неверный язык помощника")
+	}
 	if !uuidPattern.MatchString(in.ID) || !validName(in.Name) || (in.Kind != "expense" && in.Kind != "income") || len(in.Icons) < 3 || len(in.Icons) > 200 || len(in.Colors) < 3 || len(in.Colors) > 256 || len(in.Categories) > 500 || len(in.Exclude) > 6 {
 		return bad("Проверьте название и каталог оформления")
 	}

@@ -1,6 +1,7 @@
 import { Component } from "react";
 import { createRoot } from "react-dom/client";
 import * as db from "/db.js";
+import { getLanguage, t } from "/i18n.js";
 import { FinanceProvider } from "./FinanceProvider.jsx";
 import App from "./App.jsx";
 import "./theme.css";
@@ -23,16 +24,18 @@ function BootError({ error }) {
   return (
     <main className="boot">
       <span className="brand-mark">₽</span>
-      <h2>Не удалось открыть учет</h2>
-      <p className="small">{error.message}</p>
+      <h2>{t("Не удалось открыть учет")}</h2>
+      <p className="small">{t(error.message)}</p>
       <button className="primary" onClick={() => location.reload()}>
-        Повторить
+        {t("Повторить")}
       </button>
     </main>
   );
 }
 const root = createRoot(document.getElementById("app"));
 async function start() {
+  document.documentElement.lang = getLanguage();
+  document.title = getLanguage() === "en" ? "Finance" : "Финансы";
   if (!isSecureContext || !crypto.randomUUID || !window.indexedDB)
     throw Error(
       "Для офлайн-приложения нужен HTTPS или localhost. Откройте адрес HTTPS из инструкции запуска.",

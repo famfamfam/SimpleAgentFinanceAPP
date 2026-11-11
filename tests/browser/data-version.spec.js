@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.route("http://localhost:19876/**", async route => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/") return route.fulfill({ contentType: "text/html", body: "<!doctype html><title>test</title>" });
-    if (["/db.js", "/model.js", "/chat-db.js", "/sync.js", "/icons.js"].includes(path))
+    if (["/db.js", "/model.js", "/chat-db.js", "/sync.js", "/icons.js", "/i18n.js", "/en.js", "/en-screens.js", "/en-forms.js"].includes(path))
       return route.fulfill({ contentType: "text/javascript", body: await readFile(`backend/web${path}`) });
     return route.fulfill({ status: 426, contentType: "application/json", body: JSON.stringify({ code: "client_update_required", error: "update required" }) });
   });

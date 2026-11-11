@@ -6,9 +6,86 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
+
+func TestAssistantLegacyInputSerializationAndLanguageValidation(t *testing.T) {
+	in := AssistantInput{ID: "id", Text: "text", Date: "2026-01-01", AccountID: "account"}
+	want := `{"id":"id","text":"text","date":"2026-01-01","accountId":"account"}`
+	if got := string(jsonBytes(in)); got != want {
+		t.Fatalf("legacy fingerprint input changed: %s", got)
+	}
+	for _, tc := range []struct {
+		language string
+		valid    bool
+	}{{"", true}, {"ru", true}, {"en", true}, {"EN", false}, {"fr", false}, {" ", false}} {
+		if validAssistantLanguage(tc.language) != tc.valid {
+			t.Errorf("language %q validation incorrect", tc.language)
+		}
+	}
+	in.Language = "en"
+	if !strings.Contains(string(jsonBytes(in)), `"language":"en"`) {
+		t.Fatal("new language is not part of the fingerprint")
+	}
+}
+
+func TestAssistantLanguageControlsPromptAndCachedOutput(t *testing.T) {
+	a := integrationApp(t)
+	a.openrouter = "mock"
+	var prompts []string
+	provider := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Only the first message is needed; later user content can be an array.
+		var raw struct {
+			Messages []json.RawMessage `json:"messages"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+			t.Error(err)
+			return
+		}
+		var first struct {
+			Content string `json:"content"`
+		}
+		if err := json.Unmarshal(raw.Messages[0], &first); err != nil {
+			t.Error(err)
+			return
+		}
+		prompts = append(prompts, first.Content)
+		entry := Entry{Kind: "expense", Amount: "200.00", Date: "2026-11-02", AccountID: initialState().Accounts[0].ID, CategoryID: initialState().Categories[0].ID}
+		tool := map[string]any{"function": map[string]string{"name": "prepare_transactions", "arguments": string(jsonBytes(map[string]any{"entries": []Entry{entry}}))}}
+		respond(w, map[string]any{"choices": []any{map[string]any{"message": map[string]any{"tool_calls": []any{tool}}}}, "usage": map[string]any{"cost": 0.0001}})
+	}))
+	defer provider.Close()
+	t.Setenv("OPENROUTER_URL", provider.URL)
+	server := httptest.NewServer(a.routes())
+	defer server.Close()
+	client, _, _ := registerClient(t, server.URL, "Language")
+	book := newID()
+	call(t, client, "POST", server.URL+"/api/books", map[string]string{"id": book, "name": "Language"}, 200)
+	url := server.URL + "/api/books/" + book + "/assistant"
+	for _, tc := range []struct{ language, instruction, text string }{
+		{"", "Кратко отвечай по-русски", "Подготовлено. Проверьте и сохраните операции"},
+		{"ru", "Кратко отвечай по-русски", "Подготовлено. Проверьте и сохраните операции"},
+		{"en", "Respond concisely in English", "Prepared. Review and save the transactions."},
+	} {
+		in := AssistantInput{ID: newID(), Text: "expense", Date: "2026-11-02", Language: tc.language}
+		out := call(t, client, "POST", url, in, 200)
+		var text string
+		if err := json.Unmarshal(out["text"], &text); err != nil || text != tc.text {
+			t.Fatalf("language %q output %q: %v", tc.language, text, err)
+		}
+		call(t, client, "POST", url, in, 200)
+		if !strings.Contains(prompts[len(prompts)-1], tc.instruction) || (tc.language == "en" && strings.Contains(prompts[len(prompts)-1], "Кратко отвечай по-русски")) {
+			t.Fatalf("wrong prompt for %q", tc.language)
+		}
+		in.Language = "fr"
+		call(t, client, "POST", url, in, 400)
+	}
+	if len(prompts) != 3 {
+		t.Fatalf("cache or validation called provider: %d", len(prompts))
+	}
+}
 
 func TestParallelDraftToolCallsKeepEveryEntryWithDistinctStableIDs(t *testing.T) {
 	a := integrationApp(t)

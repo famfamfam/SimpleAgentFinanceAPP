@@ -480,8 +480,9 @@ func (a *App) createBook(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	var in struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
+		ID       string `json:"id"`
+		Name     string `json:"name"`
+		Language string `json:"language,omitempty"`
 	}
 	if err = body(r, &in); err != nil {
 		return err
@@ -489,7 +490,10 @@ func (a *App) createBook(w http.ResponseWriter, r *http.Request) error {
 	if !uuidPattern.MatchString(in.ID) || !validName(in.Name) {
 		return bad("Проверьте название книги")
 	}
-	state, _ := json.Marshal(initialState())
+	if in.Language != "" && in.Language != "ru" && in.Language != "en" {
+		return bad("Неподдерживаемый язык")
+	}
+	state, _ := json.Marshal(initialStateForLanguage(in.Language))
 	tx, err := a.db.Begin(r.Context())
 	if err != nil {
 		return err

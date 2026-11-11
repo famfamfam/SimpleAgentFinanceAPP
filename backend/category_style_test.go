@@ -11,6 +11,30 @@ import (
 	"testing"
 )
 
+func TestCategoryStyleLanguageValidationPreservesLegacyFingerprint(t *testing.T) {
+	var in CategoryStyleInput
+	if err := json.Unmarshal([]byte(`{"id":"00000000-0000-4000-8000-000000000001","name":"Food","kind":"expense","icons":[{"id":"apple","label":"Apple"},{"id":"cake","label":"Cake"},{"id":"pizza","label":"Pizza"}],"colors":["#123456","#654321","#abcdef"],"categories":null,"exclude":null}`), &in); err != nil {
+		t.Fatal(err)
+	}
+	want := `{"id":"00000000-0000-4000-8000-000000000001","name":"Food","kind":"expense","icons":[{"id":"apple","label":"Apple"},{"id":"cake","label":"Cake"},{"id":"pizza","label":"Pizza"}],"colors":["#123456","#654321","#abcdef"],"categories":null,"exclude":null}`
+	if got := string(jsonBytes(in)); got != want {
+		t.Fatalf("legacy fingerprint input changed: %s", got)
+	}
+	for _, tc := range []struct {
+		language string
+		valid    bool
+	}{{"", true}, {"ru", true}, {"en", true}, {"fr", false}, {"EN", false}} {
+		in.Language = tc.language
+		if (in.validate() == nil) != tc.valid {
+			t.Errorf("language %q validation incorrect", tc.language)
+		}
+	}
+	in.Language = "en"
+	if !bytes.Contains(jsonBytes(in), []byte(`"language":"en"`)) {
+		t.Fatal("language missing from style fingerprint")
+	}
+}
+
 func TestModelPayloadUsesQwenRouting(t *testing.T) {
 	a := &App{model: "qwen/qwen3.8-omni-flash"}
 	payload := a.modelPayload(nil, nil, 512)

@@ -27,6 +27,17 @@ to the Go server; set `VITE_API_TARGET` to use another API address. React compon
 are in `frontend/src/`. `backend/web/` contains the single shared model, IndexedDB,
 sync and Service Worker modules used by React and the server.
 
+`npm run i18n:audit` lists Cyrillic source lines. `npm run i18n:check` checks
+quoted JavaScript literals (including menu arrays and conditional branches) and
+all dictionary placeholders. `npm run i18n:audit -- --dynamic` lists dynamic
+`t()` calls for manual review. This is a lexical check, not a JSX parser.
+
+Intentional exceptions: user data and existing chat history, Russian XLSX sheet
+names/headers, Go prompts/logs, the external MCP protocol and the standalone
+benchmark tool. Known system errors are translated when displayed; raw queued
+requests and backups must stay unchanged. The script lists exact history/template
+exceptions; Go error strings and JSX text still require manual review.
+
 ## Tests
 
 ```sh

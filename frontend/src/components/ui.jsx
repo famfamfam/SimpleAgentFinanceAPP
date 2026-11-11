@@ -1,3 +1,4 @@
+import { t } from "/i18n.js";
 import { useEffect, useRef } from "react";
 import { paths } from "/icons.js";
 
@@ -66,7 +67,7 @@ export function Dialog({ title, onClose, children, wide = false }) {
         <button
           type="button"
           className="icon-button"
-          aria-label="Закрыть"
+          aria-label={t("Закрыть")}
           data-action="close"
           onClick={onClose}
         >

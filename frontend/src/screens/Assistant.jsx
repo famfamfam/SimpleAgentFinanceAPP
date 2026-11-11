@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { t, getLocale, translateFileError } from "/i18n.js";
 import * as db from "/db.js";
 import * as chat from "/chat-db.js";
 import { cents, currencyCode, formatMoney } from "/model.js";
@@ -44,7 +45,7 @@ function receiptTotal(result) {
       result.entries.some((entry) => currencyCode(entry.currency) !== currency)
     )
       return "";
-    return ` · итог чека ${formatMoney(cents(result.total), currency)}`;
+    return ` · ${t("итог чека {total}", { total: formatMoney(cents(result.total), currency) })}`;
   } catch {
     return "";
   }
@@ -63,13 +64,19 @@ function Audio({ blob }) {
       controls
       preload="none"
       src={url}
-      aria-label="Прослушать голосовое сообщение"
+      aria-label={t("Прослушать голосовое сообщение")}
     />
   ) : null;
 }
 const button = (action, label, onClick, extra = {}) => (
-  <button type="button" data-action={action} onClick={onClick} {...extra}>
-    {label}
+  <button
+    type="button"
+    data-action={action}
+    onClick={onClick}
+    {...extra}
+    aria-label={extra["aria-label"] ? t(extra["aria-label"]) : undefined}
+  >
+    {typeof label === "string" ? t(label) : label}
   </button>
 );
 
@@ -257,9 +264,9 @@ function AssistantScope({ finance, onEntry }) {
       !local?.cancelled &&
       (m.status === "applied" || m.localSaved || local?.saved);
     return applied && m.result?.category
-      ? "Категория подтверждена"
+      ? t("Категория подтверждена")
       : applied && m.result?.entries?.length
-        ? "Операции добавлены"
+        ? t("Операции добавлены")
         : m.text;
   };
   const pick = (id) =>
@@ -302,7 +309,7 @@ function AssistantScope({ finance, onEntry }) {
         .filter(chat.quoteText)
         .map(
           (m) =>
-            `${m.role === "user" ? "Вы" : "Помощник"} · ${new Date(m.createdAt).toLocaleString("ru-RU")}\n${chat.quoteText(m)}`,
+            `${t(m.role === "user" ? "Вы" : "Помощник")} · ${new Date(m.createdAt).toLocaleString(getLocale())}\n${chat.quoteText(m)}`,
         )
         .join("\n\n");
       if (!value) throw Error("В выбранных сообщениях нет текста");
@@ -422,9 +429,11 @@ function AssistantScope({ finance, onEntry }) {
     if (m.status === "cancelled" || saved?.cancelled)
       return (
         <p className="small spaced">
-          {m.legacy
-            ? "Прежний результат · без повторного выполнения"
-            : "Задача отменена"}
+          {t(
+            m.legacy
+              ? "Прежний результат · без повторного выполнения"
+              : "Задача отменена",
+          )}
         </p>
       );
     if (m.status === "applied" || m.localSaved || saved?.saved)
@@ -447,7 +456,7 @@ function AssistantScope({ finance, onEntry }) {
     )
       return (
         <p className="small spaced">
-          Уточнение продолжено в следующем сообщении
+          {t("Уточнение продолжено в следующем сообщении")}
         </p>
       );
     if (result.category)
@@ -468,7 +477,7 @@ function AssistantScope({ finance, onEntry }) {
             {result.question.choices.map((c) =>
               button(
                 "ai-choice",
-                c.label,
+                <>{c.label}</>,
                 () =>
                   run(async () => {
                     const value = await ensureAssistant(settings, m.replyTo);
@@ -516,7 +525,7 @@ function AssistantScope({ finance, onEntry }) {
         {!!result.entries?.length && result.action !== "clarify" && (
           <>
             <p className="small spaced">
-              {result.entries.length} операций
+              {t("{count} операций", { count: result.entries.length })}
               {receiptTotal(result)}
             </p>
             {button(
@@ -533,7 +542,7 @@ function AssistantScope({ finance, onEntry }) {
   return (
     <div className="assistant">
       <div className="chat-heading">
-        <h1>{legacy ? "Прежняя переписка" : "Помощник"}</h1>
+        <h1>{t(legacy ? "Прежняя переписка" : "Помощник")}</h1>
         {button(
           "chat-menu",
           <Icon name="dots" />,
@@ -545,9 +554,9 @@ function AssistantScope({ finance, onEntry }) {
         <div
           className="chat-selection"
           role="toolbar"
-          aria-label="Действия с выбранными сообщениями"
+          aria-label={t("Действия с выбранными сообщениями")}
         >
-          <span>Выбрано: {selected.size}</span>
+          <span>{t("Выбрано: {count}", { count: selected.size })}</span>
           {button("chat-quote", "Цитировать", () => quote(), {
             className: "text-button",
             disabled: !selected.size,
@@ -570,7 +579,7 @@ function AssistantScope({ finance, onEntry }) {
       )}
       {legacy ? (
         <aside className="draft-banner">
-          <span>Сохранена на этом устройстве</span>
+          <span>{t("Сохранена на этом устройстве")}</span>
           {button(
             "chat-current",
             "Вернуться",
@@ -592,7 +601,7 @@ function AssistantScope({ finance, onEntry }) {
         !!archive.length &&
         button(
           "chat-legacy",
-          `Прежняя переписка · ${archive.length}`,
+          t("Прежняя переписка · {count}", { count: archive.length }),
           () => {
             setLegacy(true);
             clearSelection();
@@ -602,7 +611,7 @@ function AssistantScope({ finance, onEntry }) {
       )}
       {entryReturn && !selecting && (
         <aside className="draft-banner">
-          <span>Черновик операции сохранён</span>
+          <span>{t("Черновик операции сохранён")}</span>
           {button(
             "entry-return",
             "Назад к операции",
@@ -615,7 +624,7 @@ function AssistantScope({ finance, onEntry }) {
         ref={log}
         className="chat-messages"
         role="log"
-        aria-label="Сообщения помощника"
+        aria-label={t("Сообщения помощника")}
         onScroll={(event) => {
           const el = event.currentTarget;
           if (more && !legacy && scroll.current.top >= 24 && el.scrollTop < 24)
@@ -642,12 +651,12 @@ function AssistantScope({ finance, onEntry }) {
               date = new Date(m.createdAt),
               prior =
                 rows[i - 1] &&
-                new Date(rows[i - 1].createdAt).toLocaleDateString("ru-RU");
+                new Date(rows[i - 1].createdAt).toLocaleDateString(getLocale());
             return (
               <Fragment key={m.id}>
-                {date.toLocaleDateString("ru-RU") !== prior && (
+                {date.toLocaleDateString(getLocale()) !== prior && (
                   <div className="chat-date">
-                    {date.toLocaleDateString("ru-RU", {
+                    {date.toLocaleDateString(getLocale(), {
                       day: "numeric",
                       month: "long",
                       year: "numeric",
@@ -657,9 +666,9 @@ function AssistantScope({ finance, onEntry }) {
                 <article
                   className={`chat-message ${m.role === "user" ? "chat-user" : "assistant-result"} ${selected.has(m.id) ? "message-selected" : ""}`}
                   data-message-id={m.id}
-                  aria-label={
-                    m.role === "user" ? "Ваше сообщение" : "Ответ помощника"
-                  }
+                  aria-label={t(
+                    m.role === "user" ? "Ваше сообщение" : "Ответ помощника",
+                  )}
                 >
                   {selecting &&
                     button(
@@ -677,19 +686,21 @@ function AssistantScope({ finance, onEntry }) {
                     <p>{answer(m)}</p>
                     {m.audio && (
                       <>
-                        <span className="small">Голосовое сообщение</span>
+                        <span className="small">
+                          {t("Голосовое сообщение")}
+                        </span>
                         {audio[m.id] ? (
                           <Audio blob={audio[m.id]} />
                         ) : m.media?.available === false ? (
                           <p className="small audio-expired">
-                            Срок хранения аудио истёк
+                            {t("Срок хранения аудио истёк")}
                           </p>
                         ) : (
                           button(
                             m.legacyMediaKey ? "chat-play-legacy" : "chat-play",
                             <>
                               <Icon name="play" />
-                              Прослушать
+                              {t("Прослушать")}
                             </>,
                             () => play(m),
                             {
@@ -707,12 +718,14 @@ function AssistantScope({ finance, onEntry }) {
                     {queued && (
                       <div className="ai-queued">
                         <p className="small" role="status">
-                          {queued.error ||
-                            (assistantInFlight() === m.id
-                              ? "Обрабатывается"
-                              : queued.paused
-                                ? "Отправка приостановлена"
-                                : "В очереди")}
+                          {translateFileError(
+                            queued.error ||
+                              (assistantInFlight() === m.id
+                                ? "Обрабатывается"
+                                : queued.paused
+                                  ? "Отправка приостановлена"
+                                  : "В очереди"),
+                          )}
                         </p>
                         {(queued.error || queued.paused) &&
                           button(
@@ -740,11 +753,11 @@ function AssistantScope({ finance, onEntry }) {
                   <div className="message-meta">
                     <time
                       dateTime={m.createdAt}
-                      title={date.toLocaleString("ru-RU")}
+                      title={date.toLocaleString(getLocale())}
                     >
                       {m.legacy && m.role === "assistant"
-                        ? "Архив"
-                        : date.toLocaleTimeString("ru-RU", {
+                        ? t("Архив")
+                        : date.toLocaleTimeString(getLocale(), {
                             hour: "2-digit",
                             minute: "2-digit",
                           })}
@@ -772,10 +785,11 @@ function AssistantScope({ finance, onEntry }) {
         ) : (
           <div className="assistant-intro">
             <span className="brand-mark">✧</span>
-            <h2>Расскажите, что потратили</h2>
+            <h2>{t("Расскажите, что потратили")}</h2>
             <p className="small">
-              Текст или голос — помощник добавит понятную операцию или уточнит
-              детали. Чек проверите перед сохранением.
+              {t(
+                "Текст или голос — помощник добавит понятную операцию или уточнит детали. Чек проверите перед сохранением.",
+              )}
             </p>
             <div className="suggestions">
               {[
@@ -786,7 +800,7 @@ function AssistantScope({ finance, onEntry }) {
                   "suggestion",
                   value,
                   () => {
-                    changeText(value);
+                    changeText(t(value));
                     input.current?.focus();
                   },
                   { key: value, className: "pill", "data-text": value },
@@ -798,14 +812,15 @@ function AssistantScope({ finance, onEntry }) {
       </div>
       {!settings.connected && (
         <p className="small">
-          Подключите синхронизацию в настройках для работы помощника. Без сети
-          запрос останется в очереди.
+          {t(
+            "Подключите синхронизацию в настройках для работы помощника. Без сети запрос останется в очереди.",
+          )}
         </p>
       )}
       <form id="ai-form" className="ai-input" onSubmit={submit}>
         {!legacy && context && (
           <div className="pending-context">
-            <span>Ответ на уточнение</span>
+            <span>{t("Ответ на уточнение")}</span>
             {button("chat-detach", <Icon name="close" />, detach, {
               className: "icon-button",
               "aria-label": "Начать независимый запрос",
@@ -817,7 +832,7 @@ function AssistantScope({ finance, onEntry }) {
             {quotes.map((m) => (
               <div className="composer-quote" key={m.id}>
                 <div>
-                  <strong>{m.role === "user" ? "Вы" : "Помощник"}</strong>
+                  <strong>{t(m.role === "user" ? "Вы" : "Помощник")}</strong>
                   <p>{chat.quoteText(m)}</p>
                 </div>
                 {button(
@@ -838,8 +853,10 @@ function AssistantScope({ finance, onEntry }) {
           {media.recording ? (
             <div className="recording" role="status">
               <span className="record-dot" />
-              <strong>Идёт запись</strong>{" "}
-              <time id="record-time">{media.seconds} с</time>
+              <strong>{t("Идёт запись")}</strong>{" "}
+              <time id="record-time">
+                {t("{count} с", { count: media.seconds })}
+              </time>
               {button(
                 "ai-abort",
                 <Icon name="close" />,
@@ -848,17 +865,27 @@ function AssistantScope({ finance, onEntry }) {
               )}
             </div>
           ) : media.busy ? (
-            <p role="status">Обрабатываем вложение…</p>
+            <p role="status">{t("Обрабатываем вложение…")}</p>
           ) : (
             media.attachment && (
               <div className="audio-preview">
-                <span>{media.attachment.label}</span>
+                <span>
+                  {media.attachment.duration != null
+                    ? t("Голос · {count} сек.", {
+                        count: media.attachment.duration,
+                      })
+                    : media.attachment.fileName != null
+                      ? t("Фото чека · {name}", {
+                          name: media.attachment.fileName,
+                        })
+                      : t(media.attachment.label)}
+                </span>
                 {media.attachment.original && (
                   <Audio blob={media.attachment.original} />
                 )}
                 {media.attachment.error && (
                   <>
-                    <p className="small">{media.attachment.error}</p>
+                    <p className="small">{t(media.attachment.error)}</p>
                     {button(
                       "ai-prepare",
                       "Повторить подготовку",
@@ -879,7 +906,7 @@ function AssistantScope({ finance, onEntry }) {
           )}
         </div>
         <label hidden htmlFor="ai-text">
-          Сообщение помощнику
+          {t("Сообщение помощнику")}
         </label>
         <div className="ai-compose-row ai-tools">
           {button(
@@ -916,7 +943,7 @@ function AssistantScope({ finance, onEntry }) {
             data-draft-scope={scope}
             rows="1"
             id="ai-text"
-            placeholder="Сообщение…"
+            placeholder={t("Сообщение…")}
             maxLength={4096}
             value={text}
             disabled={!loaded || sending}
@@ -937,7 +964,7 @@ function AssistantScope({ finance, onEntry }) {
           <button
             className="primary icon-button"
             type="submit"
-            aria-label="Отправить"
+            aria-label={t("Отправить")}
             disabled={sending || !loaded}
           >
             <Icon name="arrowUp" />
@@ -945,9 +972,9 @@ function AssistantScope({ finance, onEntry }) {
         </div>
         <p className="small" id="ai-status">
           {sending && media.busy
-            ? "Подготовка голоса…"
+            ? t("Подготовка голоса…")
             : queue.length
-              ? `Запросов в очереди: ${queue.length}`
+              ? t("Запросов в очереди: {count}", { count: queue.length })
               : ""}
         </p>
       </form>
@@ -961,7 +988,7 @@ function AssistantScope({ finance, onEntry }) {
       )}
       {modal && modal.type !== "review" && (
         <Dialog
-          title={
+          title={t(
             {
               menu: "Переписка",
               message: "Сообщение",
@@ -970,8 +997,8 @@ function AssistantScope({ finance, onEntry }) {
                 : "Удалить сообщения?",
               import: "Перенести прежнюю переписку?",
               photo: "Фото чека",
-            }[modal.type]
-          }
+            }[modal.type],
+          )}
           onClose={() => setModal(null)}
         >
           {modal.type === "menu" && (
@@ -1006,8 +1033,9 @@ function AssistantScope({ finance, onEntry }) {
                 )}
               </div>
               <p className="small spaced">
-                История личная. Другие участники книги её не видят. В контекст
-                идут только ваши цитаты и текущее уточнение.
+                {t(
+                  "История личная. Другие участники книги её не видят. В контекст идут только ваши цитаты и текущее уточнение.",
+                )}
               </p>
             </>
           )}
@@ -1052,13 +1080,15 @@ function AssistantScope({ finance, onEntry }) {
             <>
               <p>
                 {modal.clear
-                  ? "Будут удалены сообщения этой книги"
-                  : `Выбрано сообщений: ${modal.ids.length}`}{" "}
-                {legacy ? "на этом устройстве" : "на всех ваших устройствах"}.
-                Незавершённые запросы отменятся.
+                  ? t("Будут удалены сообщения этой книги")
+                  : t("Выбрано сообщений: {count}", {
+                      count: modal.ids.length,
+                    })}{" "}
+                {t(legacy ? "на этом устройстве" : "на всех ваших устройствах")}
+                . {t("Незавершённые запросы отменятся.")}
               </p>
               <p className="small spaced">
-                Уже сохранённые операции и категории останутся в книге.
+                {t("Уже сохранённые операции и категории останутся в книге.")}
               </p>
               <div className="form-actions">
                 {button("close", "Отмена", () => setModal(null), {
@@ -1073,12 +1103,14 @@ function AssistantScope({ finance, onEntry }) {
           {modal.type === "import" && (
             <>
               <p>
-                Сообщения за последние 90 дней попадут в вашу личную историю.
-                Старые задачи не выполнятся повторно.
+                {t(
+                  "Сообщения за последние 90 дней попадут в вашу личную историю. Старые задачи не выполнятся повторно.",
+                )}
               </p>
               <p className="small spaced">
-                Проверьте, что это ваша переписка: прежний архив не содержит ID
-                владельца.
+                {t(
+                  "Проверьте, что это ваша переписка: прежний архив не содержит ID владельца.",
+                )}
               </p>
               <div className="form-actions">
                 {button(
@@ -1103,7 +1135,7 @@ function AssistantScope({ finance, onEntry }) {
                 "ai-file",
                 <>
                   <Icon name="photo" />
-                  Выбрать файл
+                  {t("Выбрать файл")}
                 </>,
                 () => {
                   setModal(null);
@@ -1115,7 +1147,7 @@ function AssistantScope({ finance, onEntry }) {
                 "ai-camera",
                 <>
                   <Icon name="camera" />
-                  Сделать фото
+                  {t("Сделать фото")}
                 </>,
                 () => {
                   setModal(null);

@@ -20,7 +20,7 @@ func workerScript() ([]byte, error) {
 		return nil, err
 	}
 	script := strings.Replace(string(content), "finance-dev", "finance-"+assetDigest(), 1)
-	paths := []string{"/", "/index.html", "/db.js", "/chat-db.js", "/sync.js", "/model.js", "/icons.js", "/release.js", "/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-192.png", "/icon-512.png"}
+	paths := []string{"/", "/index.html", "/db.js", "/chat-db.js", "/sync.js", "/model.js", "/icons.js", "/release.js", "/i18n.js", "/en.js", "/en-screens.js", "/en-forms.js", "/manifest.webmanifest", "/icon.svg", "/icon-180.png", "/icon-192.png", "/icon-512.png"}
 	err = fs.WalkDir(assets, "react-web/dist/assets", func(name string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err

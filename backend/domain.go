@@ -131,9 +131,14 @@ func ValidCurrency(code string) bool {
 }
 
 func validName(s string) bool { return strings.TrimSpace(s) != "" && len([]rune(s)) <= 80 }
-func initialState() State {
+func initialState() State     { return initialStateForLanguage("ru") }
+func initialStateForLanguage(language string) State {
 	s := State{Accounts: []Account{{ID: "00000000-0000-4000-8000-000000000001", Name: "Основной", Opening: "0.00", Currency: "RUB", Version: 1}}, Categories: []Category{}, Entries: []Entry{}}
 	names := []string{"Продукты", "Кафе", "Транспорт", "Дом", "Здоровье", "Покупки", "Досуг", "Другое", "Зарплата", "Другие доходы", "Образование", "ЖКХ", "Жилье", "Маркетплейсы", "Одежда", "Животина"}
+	if language == "en" {
+		s.Accounts[0].Name = "Main"
+		names = []string{"Groceries", "Cafes", "Transport", "Home", "Health", "Shopping", "Leisure", "Other", "Salary", "Other income", "Education", "Utilities", "Housing", "Marketplaces", "Clothing", "Pets"}
+	}
 	icons := []string{"basket", "cup", "bus", "home", "heart", "bag", "wallet", "dots", "wallet", "plus", "book", "tent", "tag", "parcel", "shirt", "paw"}
 	colors := []string{"#7dad43", "#b08bc0", "#6598c5", "#ff8b36", "#ff3e36", "#ffbd1c", "#58b8a2", "#8e9782", "#7dad43", "#58b8a2", "#6598c5", "#7dad43", "#ff4550", "#ffbd1c", "#ffbd1c", "#ffbd1c"}
 	for i, n := range names {

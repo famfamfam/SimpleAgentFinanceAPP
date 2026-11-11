@@ -34,6 +34,7 @@ type AssistantInput struct {
 	PendingTaskID string          `json:"pendingTaskId,omitempty"`
 	SentAt        time.Time       `json:"sentAt,omitzero"`
 	ChatEpoch     int64           `json:"chatEpoch,omitempty"`
+	Language      string          `json:"language,omitempty"`
 }
 type AssistantTurn struct {
 	Role    string `json:"role"`
@@ -79,6 +80,17 @@ const systemPrompt = `Ты помощник учета финансов. Кра�
 
 const autoPrompt = `Режим auto: понятные операции приложение сохранит само после проверки. Для неопределенной суммы, противоречивой даты или неоднозначной категории вызови ask_clarification: передай подготовленные поля entries и question {text,categoryIds}. Для категории предложи 2–3 подходящих действующих ID; когда вопрос про сумму или дату, categoryIds пустой. Не подставляй предположение. Если дата вообще не названа, dateOfInput разрешена. Если счет не назван, используй defaultAccountId. «Мороженое 100 ₽» при наличии «Продукты» и «Кафе» требует выбора между ними; «Свинина 200 ₽» — продукты без уточнения. Для уверенной операции — prepare_transactions. При голосе передай распознанный текст в transcript; при продолжении используй подготовленные поля и последнее уточнение. Чек всегда требует ручной проверки. Сообщай о подготовке: фактическое сохранение выполняет приложение.`
 
+func validAssistantLanguage(language string) bool {
+	return language == "" || language == "ru" || language == "en"
+}
+
+func assistantText(language, russian, english string) string {
+	if language == "en" {
+		return english
+	}
+	return russian
+}
+
 func toolDefinition(name, description string, properties map[string]any, required []string) map[string]any {
 	return map[string]any{"type": "function", "function": map[string]any{"name": name, "description": description, "parameters": map[string]any{"type": "object", "properties": properties, "required": required}}}
 }
@@ -104,6 +116,9 @@ func (a *App) assistant(w http.ResponseWriter, r *http.Request) error {
 	var in AssistantInput
 	if err = body(r, &in); err != nil {
 		return err
+	}
+	if !validAssistantLanguage(in.Language) {
+		return bad("Неверный язык помощника")
 	}
 	if !uuidPattern.MatchString(in.ID) || len(in.Text) > 8192 || len(in.Text)+len(in.Image)+len(in.Audio) == 0 {
 		return bad("Напишите запрос или приложите фото/аудио")
@@ -289,7 +304,11 @@ func (a *App) assistant(w http.ResponseWriter, r *http.Request) error {
 	if in.Audio != "" {
 		content = append(content, map[string]any{"type": "input_audio", "input_audio": map[string]string{"data": in.Audio, "format": "wav"}})
 	}
-	messages := []map[string]any{{"role": "system", "content": systemPrompt}, {"role": "system", "content": string(jsonBytes(contextData))}}
+	prompt := systemPrompt
+	if in.Language == "en" {
+		prompt = strings.Replace(prompt, "Кратко отвечай по-русски.", "Respond concisely in English. Write all user-facing answers and clarification questions in English; preserve the original language of transcripts and user-provided names.", 1)
+	}
+	messages := []map[string]any{{"role": "system", "content": prompt}, {"role": "system", "content": string(jsonBytes(contextData))}}
 	for _, turn := range in.Previous {
 		messages = append(messages, map[string]any{"role": turn.Role, "content": turn.Content})
 	}
@@ -485,11 +504,12 @@ func (a *App) assistant(w http.ResponseWriter, r *http.Request) error {
 					e.Deleted = false
 					draft.Entries[i] = e
 					if err := s.State.validateEntry(e); err != nil {
-						output.Text = "Проверьте сумму, счет и категорию перед сохранением"
+						output.Text = assistantText(in.Language, "Проверьте сумму, счет и категорию перед сохранением", "Check the amount, account, and category before saving.")
 						if in.Mode == "auto" {
 							output.Action = "clarify"
-							output.Question = &AssistantQuestion{Text: err.Error(), Choices: []AssistantChoice{}}
-							output.Text = "Уточните: " + err.Error()
+							question := assistantText(in.Language, err.Error(), "Please check the transaction amount, date, account, and category.")
+							output.Question = &AssistantQuestion{Text: question, Choices: []AssistantChoice{}}
+							output.Text = assistantText(in.Language, "Уточните: "+err.Error(), question)
 						}
 					}
 				}
@@ -550,7 +570,7 @@ func (a *App) assistant(w http.ResponseWriter, r *http.Request) error {
 					output.Total = normalized
 				}
 				if output.Text == "" {
-					output.Text = "Подготовлено. Проверьте и сохраните операции"
+					output.Text = assistantText(in.Language, "Подготовлено. Проверьте и сохраните операции", "Prepared. Review and save the transactions.")
 				}
 				step = 4
 			case "prepare_category":
@@ -597,9 +617,9 @@ func (a *App) assistant(w http.ResponseWriter, r *http.Request) error {
 				output.Category = &category
 				output.Entries = draft.Entries
 				output.Action = "category"
-				output.Text = "Выберите оформление и подтвердите категорию"
+				output.Text = assistantText(in.Language, "Выберите оформление и подтвердите категорию", "Choose a style and confirm the category.")
 				if category.ExistingID != "" {
-					output.Text = "Такая категория уже есть. Использовать её?"
+					output.Text = assistantText(in.Language, "Такая категория уже есть. Использовать её?", "This category already exists. Use it?")
 				}
 				if draft.Total != "" {
 					if !receiptCurrencyMatches(draft.ReceiptCurrency, output.Entries) || (output.Total != "" && output.ReceiptCurrency != NormalizeCurrency(draft.ReceiptCurrency)) {
@@ -622,10 +642,10 @@ func (a *App) assistant(w http.ResponseWriter, r *http.Request) error {
 	if output.Action == "add" && assistantNeedsCurrencyReview(s.State) {
 		// shortcut: require review in multi-currency books until amount provenance can be verified.
 		output.Action = "review"
-		output.Text = "Проверьте суммы и валюты перед сохранением"
+		output.Text = assistantText(in.Language, "Проверьте суммы и валюты перед сохранением", "Check the amounts and currencies before saving.")
 	}
 	if output.Text == "" {
-		output.Text = "Запрос слишком сложный. Уточните период или разделите его на части"
+		output.Text = assistantText(in.Language, "Запрос слишком сложный. Уточните период или разделите его на части", "The request is too complex. Specify a period or split it into parts.")
 	}
 	if err = requireAssistantDataVersion(output, dataVersionFromContext(r.Context())); err != nil {
 		return err

@@ -1,4 +1,5 @@
 import { categoryIcons } from "./icons.js";
+import { getLocale, t } from "./i18n.js";
 export const accountId = "00000000-0000-4000-8000-000000000001";
 export const categoryNames = [
   "Продукты",
@@ -42,7 +43,7 @@ export function initialState() {
     accounts: [
       {
         id: accountId,
-        name: "Основной",
+        name: t("Основной"),
         opening: "0.00",
         version: 1,
         deleted: false,
@@ -50,7 +51,7 @@ export function initialState() {
     ],
     categories: categoryNames.map((name, i) => ({
       id: `00000000-0000-4000-8000-${String(i + 2).padStart(12, "0")}`,
-      name,
+      name: t(name),
       kind: i === 8 || i === 9 ? "income" : "expense",
       color: colors[i],
       icon: icons[i],
@@ -83,10 +84,11 @@ export function currencyCode(value) {
 const currencyFormats = new Map();
 export function formatMoney(value, code = "RUB") {
   code = currencyCode(code);
-  if (!currencyFormats.has(code)) currencyFormats.set(code, new Intl.NumberFormat("ru-RU", {
+  const locale = getLocale(), key = `${locale}:${code}`;
+  if (!currencyFormats.has(key)) currencyFormats.set(key, new Intl.NumberFormat(locale, {
     style: "currency", currency: code, currencyDisplay: code === "RUB" ? "symbol" : "code", maximumFractionDigits: 2, minimumFractionDigits: 0,
   }));
-  return currencyFormats.get(code).format(value / 100);
+  return currencyFormats.get(key).format(value / 100);
 }
 export function rub(value) { return formatMoney(value, "RUB"); }
 export function clock() {
@@ -163,7 +165,7 @@ export function bufferBase64(buffer) {
 }
 export const base64Buffer = text => Uint8Array.from(atob(text),x=>x.charCodeAt(0)).buffer;
 export function dayLabel(date) {
-  return new Intl.DateTimeFormat("ru-RU", {
+  return new Intl.DateTimeFormat(getLocale(), {
     day: "numeric",
     month: "long",
     year: "numeric",

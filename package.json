@@ -7,8 +7,10 @@
     "build": "vite build --config frontend/vite.config.js",
     "format": "prettier --write \"frontend/src/**/*.{js,jsx,css}\" frontend/vite.config.js",
     "format:check": "prettier --check \"frontend/src/**/*.{js,jsx,css}\" frontend/vite.config.js",
-    "test": "node --test tests/model.test.js tests/model-currency.test.js",
+    "test": "node --test tests/model.test.js tests/model-currency.test.js tests/i18n.test.js",
     "test:e2e": "playwright test",
+    "i18n:audit": "node scripts/i18n-audit.mjs",
+    "i18n:check": "node scripts/i18n-audit.mjs --check",
     "test:all": "npm run test && npm run test:e2e"
   },
   "devDependencies": {

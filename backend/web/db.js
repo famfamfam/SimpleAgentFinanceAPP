@@ -1,5 +1,6 @@
 import { initialState, cents, currencyCode, summarizeByCurrency, validateEntry, assistantContext, bufferBase64, base64Buffer } from "./model.js";
 import { draftValue, putDraft, preserveDrafts } from "./chat-db.js";
+import { getLanguage, t } from "./i18n.js";
 const name =
   location.pathname === "/benchmark.html"
     ? "finance-benchmark-v1"
@@ -20,7 +21,7 @@ export function openDB() {
           probe.onerror = () => resolve(0);
         });
     if (current > 0 && current < 4 &&
-        !window.confirm("Перед обновлением данных сохраните формы и закройте старые окна приложения. Продолжить?"))
+        !window.confirm(t("Перед обновлением данных сохраните формы и закройте старые окна приложения. Продолжить?")))
       throw Error("Обновление данных отменено");
     return new Promise((resolve, reject) => {
       const r = indexedDB.open(name, 4);
@@ -221,9 +222,10 @@ export async function initialize() {
   if (await meta("settings")) return;
   const settings = {
     bookId: crypto.randomUUID(),
-    bookName: "Личный учет",
+    bookName: t("Личный учет"),
+    initialLanguage: getLanguage(),
     connected: false,
-    nickname: "Я",
+    nickname: t("Я"),
     revision: 0,
   };
   await transaction(["meta", "base"], (tx) => {

@@ -1,3 +1,4 @@
+import { t } from "/i18n.js";
 import { useRef, useState } from "react";
 import {
   cents,
@@ -33,7 +34,7 @@ export default function Review({ saved, current, close, fail }) {
         amount:
           saved.result.total ||
           decimal(rows.reduce((sum, e) => sum + cents(e.amount), 0)),
-        note: "Чек одной суммой",
+        note: t("Чек одной суммой"),
       },
     ]);
   const submit = async (event) => {
@@ -60,18 +61,19 @@ export default function Review({ saved, current, close, fail }) {
               currencyCode(saved.result.receiptCurrency),
           ))
       )
-        throw Error("Валюта операций не совпадает с валютой итога чека");
+        throw Error(t("Валюта операций не совпадает с валютой итога чека"));
       if (
         saved.result.total &&
         normalized.reduce((sum, e) => sum + cents(e.amount), 0) !==
           cents(saved.result.total)
       )
         throw Error(
-          "Сумма строк не совпадает с итогом чека: " +
-            formatMoney(
+          t("Сумма строк не совпадает с итогом чека: {total}", {
+            total: formatMoney(
               cents(saved.result.total),
               saved.result.receiptCurrency,
             ),
+          }),
         );
       await finishAssistant(
         { ...saved, ownerId: current.settings.userId },
@@ -81,7 +83,7 @@ export default function Review({ saved, current, close, fail }) {
       );
       close();
     } catch (error) {
-      fail(error);
+      fail(new Error(t(error.message)));
     } finally {
       saving.current = false;
       setBusy(false);
@@ -89,7 +91,9 @@ export default function Review({ saved, current, close, fail }) {
   };
   return (
     <Dialog
-      title={saved.result.receipt ? "Проверка чека" : "Подготовленные операции"}
+      title={t(
+        saved.result.receipt ? "Проверка чека" : "Подготовленные операции",
+      )}
       onClose={() => {
         if (!saving.current) close();
       }}
@@ -107,15 +111,17 @@ export default function Review({ saved, current, close, fail }) {
               data-action="receipt-one"
               onClick={one}
             >
-              Сохранить одной суммой
+              {t("Сохранить одной суммой")}
             </button>
           )}
         <div className="receipt-lines">
           {entries.map((e, i) => (
             <div key={e.id}>
-              <p>{e.note || `Операция ${i + 1}`}</p>
+              <p>{e.note || t("Операция {number}", { number: i + 1 })}</p>
               <label htmlFor={`review-amount-${i}`}>
-                Сумма ({currencyCode(e.currency)})
+                {t("Сумма ({currency})", {
+                  currency: currencyCode(e.currency),
+                })}
               </label>
               <input
                 id={`review-amount-${i}`}
@@ -126,7 +132,7 @@ export default function Review({ saved, current, close, fail }) {
               />
               <div className="form-grid">
                 <div>
-                  <label htmlFor={`review-date-${i}`}>Дата</label>
+                  <label htmlFor={`review-date-${i}`}>{t("Дата")}</label>
                   <input
                     id={`review-date-${i}`}
                     type="date"
@@ -138,7 +144,7 @@ export default function Review({ saved, current, close, fail }) {
                   />
                 </div>
                 <div>
-                  <label htmlFor={`review-time-${i}`}>Время</label>
+                  <label htmlFor={`review-time-${i}`}>{t("Время")}</label>
                   <input
                     id={`review-time-${i}`}
                     type="time"
@@ -150,7 +156,7 @@ export default function Review({ saved, current, close, fail }) {
                 </div>
               </div>
               <label htmlFor={`review-account-${i}`}>
-                {e.kind === "transfer" ? "Откуда" : "Счет"}
+                {t(e.kind === "transfer" ? "Откуда" : "Счет")}
               </label>
               <select
                 id={`review-account-${i}`}
@@ -171,7 +177,7 @@ export default function Review({ saved, current, close, fail }) {
                   });
                 }}
               >
-                <option value="">Выберите счет</option>
+                <option value="">{t("Выберите счет")}</option>
                 {current.state.accounts
                   .filter((x) => !x.deleted)
                   .map((x) => (
@@ -182,7 +188,7 @@ export default function Review({ saved, current, close, fail }) {
               </select>
               {e.kind === "transfer" ? (
                 <>
-                  <label htmlFor={`review-to-${i}`}>Куда</label>
+                  <label htmlFor={`review-to-${i}`}>{t("Куда")}</label>
                   <select
                     id={`review-to-${i}`}
                     value={e.toAccountId || ""}
@@ -200,7 +206,7 @@ export default function Review({ saved, current, close, fail }) {
                       });
                     }}
                   >
-                    <option value="">Выберите счет</option>
+                    <option value="">{t("Выберите счет")}</option>
                     {current.state.accounts
                       .filter((x) => !x.deleted)
                       .map((x) => (
@@ -213,7 +219,9 @@ export default function Review({ saved, current, close, fail }) {
                     currencyCode(e.currency) !== currencyCode(e.toCurrency) && (
                       <>
                         <label htmlFor={`review-to-amount-${i}`}>
-                          Сумма зачисления ({currencyCode(e.toCurrency)})
+                          {t("Сумма зачисления ({currency})", {
+                            currency: currencyCode(e.toCurrency),
+                          })}
                         </label>
                         <input
                           id={`review-to-amount-${i}`}
@@ -229,7 +237,9 @@ export default function Review({ saved, current, close, fail }) {
                 </>
               ) : (
                 <>
-                  <label htmlFor={`review-category-${i}`}>Категория</label>
+                  <label htmlFor={`review-category-${i}`}>
+                    {t("Категория")}
+                  </label>
                   <select
                     id={`review-category-${i}`}
                     value={e.categoryId || ""}
@@ -237,7 +247,7 @@ export default function Review({ saved, current, close, fail }) {
                       change(i, { categoryId: event.target.value })
                     }
                   >
-                    <option value="">Выберите категорию</option>
+                    <option value="">{t("Выберите категорию")}</option>
                     {categories
                       .filter((x) => !x.deleted && x.kind === e.kind)
                       .map((x) => (
@@ -253,10 +263,12 @@ export default function Review({ saved, current, close, fail }) {
         </div>
         <div className="form-actions">
           <button className="primary" disabled={busy} type="submit">
-            {saved.pendingCategories?.length
-              ? "Создать категорию и сохранить"
-              : "Сохранить"}{" "}
-            ({entries.length})
+            {t(
+              saved.pendingCategories?.length
+                ? "Создать категорию и сохранить ({count})"
+                : "Сохранить ({count})",
+              { count: entries.length },
+            )}
           </button>
         </div>
       </form>

@@ -1,3 +1,4 @@
+import { t } from "/i18n.js";
 import { useEffect, useState } from "react";
 import {
   cents,
@@ -31,7 +32,7 @@ function EntryFilters({ onClose }) {
         )?.id || "",
     }));
   return (
-    <Dialog title="Фильтры" onClose={onClose}>
+    <Dialog title={t("Фильтры")} onClose={onClose}>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -39,7 +40,7 @@ function EntryFilters({ onClose }) {
           onClose();
         }}
       >
-        <label htmlFor="filter-account">Счет</label>
+        <label htmlFor="filter-account">{t("Счет")}</label>
         <select
           id="filter-account"
           name="accountId"
@@ -48,7 +49,7 @@ function EntryFilters({ onClose }) {
             setDraft({ ...draft, account: event.target.value })
           }
         >
-          <option value="">Все счета</option>
+          <option value="">{t("Все счета")}</option>
           {current.state.accounts
             .filter((item) => !item.deleted || item.id === filters.account)
             .map((item) => (
@@ -57,21 +58,21 @@ function EntryFilters({ onClose }) {
               </option>
             ))}
         </select>
-        <label htmlFor="filter-kind">Тип операции</label>
+        <label htmlFor="filter-kind">{t("Тип операции")}</label>
         <select
           id="filter-kind"
           name="kind"
           value={draft.kind}
           onChange={(event) => changeKind(event.target.value)}
         >
-          <option value="">Все операции</option>
+          <option value="">{t("Все операции")}</option>
           {Object.entries(kinds).map(([kind, label]) => (
             <option key={kind} value={kind}>
-              {label}
+              {t(label)}
             </option>
           ))}
         </select>
-        <label htmlFor="filter-category">Категория</label>
+        <label htmlFor="filter-category">{t("Категория")}</label>
         <select
           id="filter-category"
           name="categoryId"
@@ -81,7 +82,7 @@ function EntryFilters({ onClose }) {
             setDraft({ ...draft, category: event.target.value })
           }
         >
-          <option value="">Все категории</option>
+          <option value="">{t("Все категории")}</option>
           {categories.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
@@ -90,7 +91,7 @@ function EntryFilters({ onClose }) {
         </select>
         <div className="form-actions">
           <button type="submit" className="primary">
-            Применить
+            {t("Применить")}
           </button>
           <button
             type="button"
@@ -101,7 +102,7 @@ function EntryFilters({ onClose }) {
               onClose();
             }}
           >
-            Сбросить фильтры
+            {t("Сбросить фильтры")}
           </button>
         </div>
       </form>
@@ -116,7 +117,7 @@ export default function Entries({ onEntry }) {
   const category = (id) =>
     current.state.categories.find((item) => item.id === id);
   const accountName = (id) =>
-    current.state.accounts.find((item) => item.id === id)?.name || "Счет";
+    current.state.accounts.find((item) => item.id === id)?.name || t("Счет");
   const entries = periodEntries(current.state.entries, period, filters.account)
     .filter(
       (entry) =>
@@ -172,9 +173,9 @@ export default function Entries({ onEntry }) {
           <input
             id="search"
             type="search"
-            placeholder="Поиск"
+            placeholder={t("Поиск")}
             value={filters.query}
-            aria-label="Поиск операций"
+            aria-label={t("Поиск операций")}
             onChange={(event) =>
               setFilters((previous) => ({
                 ...previous,
@@ -187,19 +188,20 @@ export default function Entries({ onEntry }) {
           type="button"
           className="secondary entries-filter-button"
           data-action="entry-filters"
-          aria-label="Фильтры"
+          aria-label={t("Фильтры")}
           aria-haspopup="dialog"
           onClick={() => setFilterOpen(true)}
         >
           <Icon name="filter" />
-          Фильтры{count > 0 && <span className="filter-count">{count}</span>}
+          {t("Фильтры")}
+          {count > 0 && <span className="filter-count">{count}</span>}
         </button>
       </div>
       {count > 0 && (
         <div
           className="entries-active-filters"
           role="group"
-          aria-label="Активные фильтры"
+          aria-label={t("Активные фильтры")}
         >
           {filters.account && (
             <button
@@ -207,7 +209,7 @@ export default function Entries({ onEntry }) {
               className="pill"
               data-action="account-filter"
               data-id=""
-              aria-label="Сбросить счет"
+              aria-label={t("Сбросить счет")}
               onClick={() => clear("account")}
             >
               <span>{accountName(filters.account)}</span>
@@ -219,10 +221,10 @@ export default function Entries({ onEntry }) {
               type="button"
               className="pill"
               data-action="clear-kind"
-              aria-label="Сбросить тип операции"
+              aria-label={t("Сбросить тип операции")}
               onClick={() => clear("kind")}
             >
-              <span>{kinds[filters.kind]}</span>
+              <span>{t(kinds[filters.kind])}</span>
               <Icon name="close" />
             </button>
           )}
@@ -231,17 +233,17 @@ export default function Entries({ onEntry }) {
               type="button"
               className="pill"
               data-action="clear-category"
-              aria-label="Сбросить категорию"
+              aria-label={t("Сбросить категорию")}
               onClick={() => clear("category")}
             >
-              <span>{category(filters.category)?.name || "Категория"}</span>
+              <span>{category(filters.category)?.name || t("Категория")}</span>
               <Icon name="close" />
             </button>
           )}
         </div>
       )}
       <p className="list-total" id="list-total">
-        Записей: {entries.length}
+        {t("Записей: {count}", { count: entries.length })}
         {totalsText ? <> · {totalsText}</> : null}
       </p>
       <section id="entries-list">
@@ -267,7 +269,7 @@ export default function Entries({ onEntry }) {
                   <span className="entry-name">
                     {entry.kind === "transfer"
                       ? `${accountName(entry.accountId)} → ${accountName(entry.toAccountId)}`
-                      : cat?.name || "Без категории"}
+                      : cat?.name || t("Без категории")}
                   </span>
                   <span className="entry-sub">
                     {entry.time && (
@@ -283,7 +285,7 @@ export default function Entries({ onEntry }) {
                       ? " · " +
                         (current.settings.members?.find(
                           (member) => member.id === entry.author,
-                        )?.nickname || "Участник")
+                        )?.nickname || t("Участник"))
                       : ""}
                   </span>
                 </span>
@@ -307,7 +309,9 @@ export default function Entries({ onEntry }) {
                   </span>
                   {entry._pending && (
                     <span className="pending">
-                      {entry._issue ? "Требует внимания" : "Ожидает отправки"}
+                      {entry._issue
+                        ? t("Требует внимания")
+                        : t("Ожидает отправки")}
                     </span>
                   )}
                 </span>
@@ -324,16 +328,16 @@ export default function Entries({ onEntry }) {
             filters.query ||
             count ? (
               <>
-                <h3>Операций не найдено</h3>
-                <p>Измените период или условия поиска.</p>
+                <h3>{t("Операций не найдено")}</h3>
+                <p>{t("Измените период или условия поиска.")}</p>
               </>
             ) : (
               <>
-                <h3>Пока нет операций</h3>
+                <h3>{t("Пока нет операций")}</h3>
                 <p>
-                  Добавьте первый расход или доход.
+                  {t("Добавьте первый расход или доход.")}
                   <br />
-                  Запись сохранится, даже если нет сети.
+                  {t("Запись сохранится, даже если нет сети.")}
                 </p>
               </>
             )}
@@ -348,7 +352,7 @@ export default function Entries({ onEntry }) {
               disabled={page === 0}
               onClick={() => setPageIndex(page - 1)}
             >
-              Назад
+              {t("Назад")}
             </button>
             <span>
               {page + 1} / {pages}
@@ -360,7 +364,7 @@ export default function Entries({ onEntry }) {
               disabled={page + 1 >= pages}
               onClick={() => setPageIndex(page + 1)}
             >
-              Дальше
+              {t("Дальше")}
             </button>
           </div>
         )}
